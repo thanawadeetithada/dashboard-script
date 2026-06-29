@@ -5,14 +5,12 @@ function doGet() {
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
-// ฟังก์ชันช่วยจัดการรูปแบบวันที่
 function parseDateStr(val) {
   if (!val) return "";
   if (val instanceof Date) return Utilities.formatDate(val, "GMT+07:00", "dd-MMM-yyyy");
   return val.toString();
 }
 
-// ดึงข้อมูลจาก "ทุกชีต" และจัดโครงสร้างคอลัมน์ตามไฟล์ Excel จริง
 function getCleanDataAllSheets() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = ss.getSheets();
@@ -21,7 +19,6 @@ function getCleanDataAllSheets() {
   for (let s = 0; s < sheets.length; s++) {
     const data = sheets[s].getDataRange().getValues();
     
-    // ประกาศตัวแปรเพื่อ "จดจำ" ข้อมูลหลักจากบรรทัดบนสุดของล็อต (สืบทอดค่าลงมา A-G)
     let currentCode = "";
     let currentName = "";
     let currentSupplier = "";
@@ -30,14 +27,10 @@ function getCleanDataAllSheets() {
     let currentInVal = "";
     let currentRecordDate = "";
     
-    // ข้าม 4 บรรทัดแรก (Header) เริ่มเก็บข้อมูลที่บรรทัดที่ 5 (index 4)
     for (let i = 4; i < data.length; i++) {
       let row = data[i];
-      
-      // ถ้าแถวว่างเปล่าทั้งหมด ให้ข้าม
       if (row.join("").trim() === "") continue;
       
-      // อัปเดตตัวแปรหากมีข้อมูลในเซลล์นั้นๆ (ถ้าเซลล์ว่างจะใช้ค่าเดิมจากบรรทัดก่อนหน้า)
       if (row[0] !== "") currentCode = row[0].toString().trim();
       if (row[1] !== "") currentName = row[1].toString().trim();
       if (row[2] !== "") currentSupplier = row[2].toString().trim();
@@ -46,7 +39,7 @@ function getCleanDataAllSheets() {
       if (row[5] !== "") currentInVal = row[5];
       if (row[6] !== "") currentRecordDate = parseDateStr(row[6]);
       
-      let outVal = Number(row[7]); // คอลัมน์ H (Index 7)
+      let outVal = Number(row[7]);
       let inValNum = Number(currentInVal);
       
       let rowObj = {
@@ -64,7 +57,6 @@ function getCleanDataAllSheets() {
         'ยอดคงแบทซ์': row[11] !== "" ? row[11] : ""
       };
       
-      // เก็บข้อมูลเฉพาะบรรทัดที่มีการเคลื่อนไหวหรือมีล็อตนำเข้า
       if (rowObj['รับเข้า (IN)'] !== "" || rowObj['จ่ายออก (OUT)'] !== "") {
         allData.push(rowObj);
       }
@@ -74,17 +66,11 @@ function getCleanDataAllSheets() {
 }
 
 function getTableData() {
-  // ดึงข้อมูลที่จัดระเบียบแล้วจากทุกชีต
-  const data = getCleanDataAllSheets();
-  
-  // ส่งข้อมูลกลับไปแสดงผลตรงๆ โดยไม่ต้องใช้ .reverse() แล้ว
-  // ข้อมูลจะเรียงจาก ชีต 1 -> ชีตสุดท้าย และ บน -> ล่าง ตามลำดับจริง
-  return data; 
+  return getCleanDataAllSheets(); 
 }
 
 function getFilterOptions() {
   const data = getCleanDataAllSheets();
-  
   let codes = new Set(), names = new Set(), suppliers = new Set(), batches = new Set(), dests = new Set();
   
   for (let i = 0; i < data.length; i++) {
@@ -101,5 +87,43 @@ function getFilterOptions() {
     suppliers: Array.from(suppliers).sort(),
     batches: Array.from(batches).sort(),
     destinations: Array.from(dests).sort()
+  };
+}
+
+function getKPIData() {
+  const data = getCleanDataAllSheets();
+  let totalIn = 0;
+  let totalOut = 0;
+  let batchSet = new Set();
+  
+  data.forEach(row => {
+    if (row['รับเข้า (IN)']) totalIn += Number(row['รับเข้า (IN)']);
+    if (row['จ่ายออก (OUT)']) totalOut += Number(row['จ่ายออก (OUT)']);
+    if (row['ล็อตแบทช์']) batchSet.add(row['ล็อตแบทช์']);
+  });
+  
+  let balance = totalIn - totalOut;
+  let mtRate = totalIn > 0 ? ((totalOut / totalIn) * 100).toFixed(1) : 0;
+  
+  return {
+    totalIn: totalIn.toLocaleString(),
+    totalOut: totalOut.toLocaleString(),
+    balance: balance.toLocaleString(),
+    mtRate: mtRate,
+    batchCount: batchSet.size.toLocaleString()
+  };
+}
+
+function getChartData() {
+  return {
+    monthly: {
+      labels: ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.'],
+      inData: [1500, 2000, 1800, 2200, 1900, 2500],
+      outData: [1200, 1800, 1500, 2000, 1700, 2100]
+    },
+    type: {
+      labels: ['ถัง 20L', 'ขวด 1L', 'แกลลอน 5L', 'กล่องกระดาษ'],
+      data: [45, 25, 20, 10]
+    }
   };
 }

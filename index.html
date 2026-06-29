@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script>
         tailwind.config = {
@@ -20,31 +22,74 @@
         }
     </script>
     <style>
-        body { background-color: #f8fafc; }
+        body {
+            background-color: #f8fafc;
+        }
+
         .glass-card {
-            background: white; border-radius: 12px;
+            background: white;
+            border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
             padding: 1.5rem;
         }
-        /* เอาขีดจำกัดความสูงออก และให้กว้าง 100% ภายใน Card เพื่อไม่ให้มี Scroll */
-        .table-container {  overflow-x: auto; }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
         table th {
-            background-color: #0f172a; color: white; font-weight: 500;
-            text-align: left; padding: 1rem; position: sticky; top: 0;
+            background-color: #0f172a;
+            color: white;
+            font-weight: 500;
+            text-align: left;
+            padding: 1rem;
+            position: sticky;
+            top: 0;
         }
-        /* เอา white-space: nowrap ออก เพื่อให้ข้อความตัดขึ้นบรรทัดใหม่ได้ */
-        table td { 
-            padding: 1rem; border-bottom: 1px solid #e2e8f0; color: #475569; 
+
+        table td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            color: #475569;
         }
-        table tr:hover { background-color: #f1f5f9; }
+
+        table tr:hover {
+            background-color: #f1f5f9;
+        }
+
         .kpi-icon {
-            width: 48px; height: 48px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
         }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; margin-right: 8px;}
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
+
 <body class="text-gray-800 font-sans">
 
     <nav class="bg-darkBg text-white px-6 py-4 flex justify-between items-center shadow-md">
@@ -56,16 +101,17 @@
             </div>
         </div>
         <div class="flex items-center space-x-4">
-            <span id="status-indicator" class="bg-blue-600/20 text-blue-300 border border-blue-500/30 px-3 py-1 rounded-full text-sm flex items-center">
+            <span id="status-indicator"
+                class="bg-blue-600/20 text-blue-300 border border-blue-500/30 px-3 py-1 rounded-full text-sm flex items-center">
                 <div class="loader w-3 h-3 border-2 border-t-blue-400 mr-2"></div> กำลังโหลดข้อมูล...
             </span>
-            <button onclick="loadAllData()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm transition flex items-center">
+            <button onclick="loadAllData()"
+                class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm transition flex items-center">
                 <i class="fa-solid fa-rotate-right mr-2"></i> รีเฟรชข้อมูล
             </button>
         </div>
     </nav>
 
-    <!-- ปรับความกว้างกลับมาเป็นแบบมีขอบซ้ายขวา (container) ตามภาพตัวอย่าง -->
     <div class="container mx-auto px-4 py-6 max-w-9xl space-y-6">
 
         <div class="glass-card">
@@ -74,22 +120,37 @@
                     <i class="fa-solid fa-file-import mr-2"></i> นำเข้าไฟล์ข้อมูลชุดใหม่ (CSV Uploader)
                 </h2>
             </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center text-center bg-gray-50 hover:bg-gray-100 transition cursor-pointer">
-                    <div class="bg-blue-100 text-blue-600 w-12 h-12 rounded-full flex items-center justify-center mb-3">
-                        <i class="fa-solid fa-arrow-up text-xl"></i>
+                <div id="drop-zone"
+                    class="border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center text-center bg-gray-50 hover:bg-gray-100 hover:border-blue-500 transition cursor-pointer relative">
+                    <input type="file" id="file-browse" class="hidden" accept=".csv,.txt,.tsv,.xlsx,.xls">
+                    <div
+                        class="bg-blue-100 text-blue-600 w-12 h-12 rounded-full flex items-center justify-center mb-3 pointer-events-none">
+                        <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
                     </div>
-                    <p class="font-medium text-gray-500">ฟังก์ชันลากวางไฟล์ (ล่วงหน้า)</p>
+                    <p class="font-medium text-gray-700 pointer-events-none">ลากและวางไฟล์ CSV / Excel ที่นี่</p>
+                    <p class="text-xs text-gray-400 mt-1 pointer-events-none">
+                        หรือคลิกพื้นที่นี้เพื่อเลือกไฟล์จากเครื่องคอมพิวเตอร์ (.csv, .txt)</p>
+
+                    <div id="file-info-display"
+                        class="hidden mt-3 px-3 py-1 bg-green-50 border border-green-200 rounded-full text-xs text-green-700 font-medium items-center">
+                        <i class="fa-solid fa-file-csv mr-1.5 text-sm"></i> <span id="file-name-text"></span>
+                    </div>
                 </div>
-                
+
                 <div class="flex flex-col">
-                    <textarea id="csv-input" class="w-full h-full min-h-[120px] bg-darkBg text-green-400 p-4 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="วางข้อความคัดลอกจาก CSV หรือ Excel ที่นี่..."></textarea>
+                    <textarea id="csv-input"
+                        class="w-full h-full min-h-[120px] bg-darkBg text-green-400 p-4 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        placeholder="วางข้อความคัดลอกจาก CSV หรือ Excel ที่นี่... หรือใช้ระบบลากวางและเลือกไฟล์จากเมนูด้านซ้ายข้อมูลก็จะมาสแตนด์บายในกล่องนี้อัตโนมัติ"></textarea>
                     <div class="flex justify-between items-center mt-4">
                         <label class="flex items-center text-sm text-gray-600 cursor-pointer">
-                            <input type="checkbox" id="append-checkbox" class="mr-2 rounded text-blue-600 focus:ring-blue-500" checked> เพิ่มข้อมูลต่อท้าย (Append)
+                            <input type="checkbox" id="append-checkbox"
+                                class="mr-2 rounded text-blue-600 focus:ring-blue-500" checked> เพิ่มข้อมูลต่อท้าย
+                            (Append)
                         </label>
-                        <button id="upload-btn" onclick="uploadData()" class="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2 rounded-lg font-medium transition flex items-center shadow-md">
+                        <button id="upload-btn" onclick="uploadData()"
+                            class="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2 rounded-lg font-medium transition flex items-center shadow-md">
                             <i class="fa-solid fa-bolt mr-2"></i> ประมวลผลและอัปเดต
                         </button>
                     </div>
@@ -101,14 +162,16 @@
             <div class="glass-card flex items-center justify-between">
                 <div>
                     <p class="text-sm text-gray-500 mb-1">รับเข้าบรรจุภัณฑ์รวม</p>
-                    <h3 class="text-2xl font-bold text-gray-800"><span id="kpi-in">-</span> <span class="text-lg font-normal text-gray-500">ถัง</span></h3>
+                    <h3 class="text-2xl font-bold text-gray-800"><span id="kpi-in">-</span> <span
+                            class="text-lg font-normal text-gray-500">ถัง</span></h3>
                 </div>
                 <div class="kpi-icon bg-blue-100 text-blue-600"><i class="fa-solid fa-download"></i></div>
             </div>
             <div class="glass-card flex items-center justify-between">
                 <div>
                     <p class="text-sm text-gray-500 mb-1">เบิกบรรจุใช้งานรวม</p>
-                    <h3 class="text-2xl font-bold text-gray-800"><span id="kpi-out">-</span> <span class="text-lg font-normal text-gray-500">ถัง</span></h3>
+                    <h3 class="text-2xl font-bold text-gray-800"><span id="kpi-out">-</span> <span
+                            class="text-lg font-normal text-gray-500">ถัง</span></h3>
                 </div>
                 <div class="kpi-icon bg-orange-100 text-orange-600"><i class="fa-solid fa-upload"></i></div>
             </div>
@@ -150,74 +213,92 @@
             </div>
         </div>
 
-         <div class="glass-card">
+        <div class="glass-card">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-semibold flex items-center text-blue-800">
                     <i class="fa-solid fa-filter mr-2"></i> แผงควบคุมตัวกรองอัจฉริยะ (Interactive Master Filters)
                 </h2>
-                <button class="text-blue-600 text-sm hover:underline font-medium" onclick="resetFilters()"><i class="fa-solid fa-eraser mr-1"></i> ล้างตัวกรองทั้งหมด</button>
+                <button class="text-blue-600 text-sm hover:underline font-medium" onclick="resetFilters()"><i
+                        class="fa-solid fa-eraser mr-1"></i> ล้างตัวกรองทั้งหมด</button>
             </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <!-- Row 1 -->
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>รหัสสินค้า (Product Code)</span> <span>ทั้งหมด</span></label>
-                    <select id="filter-code" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>รหัสสินค้า (Product
+                            Code)</span> <span>ทั้งหมด</span></label>
+                    <select id="filter-code" onchange="filterTable()"
+                        class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
                         <option value="">เลือก รหัส...</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ชื่อสินค้า (Product Name)</span> <span>ทั้งหมด</span></label>
-                    <select id="filter-name" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ชื่อสินค้า (Product
+                            Name)</span> <span>ทั้งหมด</span></label>
+                    <select id="filter-name" onchange="filterTable()"
+                        class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
                         <option value="">เลือก ชื่อ...</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ผู้จัดจำหน่าย (Supplier)</span> <span>ทั้งหมด</span></label>
-                    <select id="filter-sup" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ผู้จัดจำหน่าย
+                            (Supplier)</span> <span>ทั้งหมด</span></label>
+                    <select id="filter-sup" onchange="filterTable()"
+                        class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
                         <option value="">เลือก ซัพพลายเออร์...</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>เลขที่ล็อต/แบทช์ (Batch No.)</span> <span>ทั้งหมด</span></label>
-                    <select id="filter-batch" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>เลขที่ล็อต/แบทช์ (Batch
+                            No.)</span> <span>ทั้งหมด</span></label>
+                    <select id="filter-batch" onchange="filterTable()"
+                        class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
                         <option value="">เลือก ล็อต...</option>
                     </select>
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <!-- Row 2 -->
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ปลายทางเบิกจ่าย (Delivered to)</span> <span>ทั้งหมด</span></label>
-                    <select id="filter-dest" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ปลายทางเบิกจ่าย
+                            (Delivered to)</span> <span>ทั้งหมด</span></label>
+                    <select id="filter-dest" onchange="filterTable()"
+                        class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
                         <option value="">เลือก ปลายทาง...</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-xs text-gray-500 mb-1">ช่วงวันที่บันทึกธุรกรรม (Record Date)</label>
                     <div class="flex items-center space-x-2">
-                        <input type="date" id="filter-rec-start" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                        <input type="date" id="filter-rec-start" onchange="filterTable()"
+                            class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
                         <span class="text-gray-400">-</span>
-                        <input type="date" id="filter-rec-end" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                        <input type="date" id="filter-rec-end" onchange="filterTable()"
+                            class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
                     </div>
                 </div>
                 <div>
                     <label class="block text-xs text-gray-500 mb-1">ช่วงวันส่งมอบบรรจุภัณฑ์ (Delivered Date)</label>
                     <div class="flex items-center space-x-2">
-                        <input type="date" id="filter-del-start" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                        <input type="date" id="filter-del-start" onchange="filterTable()"
+                            class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
                         <span class="text-gray-400">-</span>
-                        <input type="date" id="filter-del-end" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                        <input type="date" id="filter-del-end" onchange="filterTable()"
+                            class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ปริมาณจ่ายออกสูงสุด (Max Qty Out)</span> <span id="qty-max-label" class="font-bold text-blue-700">ทั้งหมด</span></label>
-                    <input type="range" id="filter-qty-max" onchange="filterTable()" oninput="updateQtyLabel(this.value)" min="0" max="200" value="200" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ปริมาณจ่ายออกสูงสุด (Max
+                            Qty Out)</span> <span id="qty-max-label"
+                            class="font-bold text-blue-700">ทั้งหมด</span></label>
+                    <input type="range" id="filter-qty-max" onchange="filterTable()"
+                        oninput="updateQtyLabel(this.value)" min="0" max="200" value="200"
+                        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
                 </div>
             </div>
         </div>
 
         <div class="glass-card p-0 overflow-hidden">
-            <div class="p-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-white">
+            <div
+                class="p-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-white">
                 <div>
                     <h2 class="text-lg font-semibold flex items-center text-blue-800">
                         <i class="fa-solid fa-table-list mr-2"></i> ตารางบันทึกการเคลื่อนไหวบรรจุภัณฑ์
@@ -226,11 +307,12 @@
                 <div class="flex items-center space-x-3 w-full md:w-auto">
                     <div class="relative w-full md:w-64">
                         <i class="fa-solid fa-search absolute left-3 top-2.5 text-gray-400 text-sm"></i>
-                        <input type="text" id="search-input" onkeyup="filterTable()" placeholder="ค้นหาข้อความใดๆ..." class="w-full border border-gray-300 rounded-full pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                        <input type="text" id="search-input" onkeyup="filterTable()" placeholder="ค้นหาข้อความใดๆ..."
+                            class="w-full border border-gray-300 rounded-full pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
                     </div>
                 </div>
             </div>
-            
+
             <div class="table-container">
                 <table class="w-full text-sm">
                     <thead>
@@ -251,48 +333,177 @@
                         </tr>
                     </thead>
                     <tbody id="table-body">
-                        <tr><td colspan="13" class="text-center py-8 text-gray-400">กำลังโหลดข้อมูลตาราง...</td></tr>
+                        <tr>
+                            <td colspan="13" class="text-center py-8 text-gray-400">กำลังโหลดข้อมูลตาราง...</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
 
-            <!-- ปุ่มเปลี่ยนหน้า (Pagination) -->
-            <div class="p-4 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center bg-white gap-4">
+            <div
+                class="p-4 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center bg-white gap-4">
                 <div class="text-sm text-gray-500">
-                    แสดงหน้า <span id="current-page-text" class="font-bold text-gray-800">1</span> จาก <span id="total-pages-text" class="font-bold text-gray-800">1</span>
+                    แสดงหน้า <span id="current-page-text" class="font-bold text-gray-800">1</span> จาก <span
+                        id="total-pages-text" class="font-bold text-gray-800">1</span>
                 </div>
                 <div class="flex space-x-2">
-                    <button id="btn-prev" onclick="prevPage()" class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <button id="btn-prev" onclick="prevPage()"
+                        class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
                         <i class="fa-solid fa-chevron-left mr-1"></i> ก่อนหน้า
                     </button>
-                    <button id="btn-next" onclick="nextPage()" class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <button id="btn-next" onclick="nextPage()"
+                        class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
                         ถัดไป <i class="fa-solid fa-chevron-right ml-1"></i>
                     </button>
                 </div>
             </div>
-            
-            <div class="p-4 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500 bg-gray-50">
+
+            <div
+                class="p-4 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500 bg-gray-50">
                 <div id="table-info">กำลังประมวลผลรายการ...</div>
             </div>
         </div>
 
     </div>
 
-   <script>
-        let myMonthlyChart, myTypeChart;
-        let globalTableData = []; 
-        let filteredTableData = []; // เก็บข้อมูลที่ผ่านการกรองแล้ว
+    <div id="custom-modal"
+        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden transform scale-95 transition-transform duration-300"
+            id="modal-container">
+            <div class="p-6 text-center">
+                <div id="modal-icon-container"
+                    class="mx-auto w-16 h-16 rounded-full flex items-center justify-center text-3xl mb-4"></div>
+                <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-2"></h3>
+                <p id="modal-message" class="text-gray-600 text-sm leading-relaxed"></p>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 flex justify-center">
+                <button onclick="closeModal()" id="modal-btn"
+                    class="px-6 py-2 rounded-lg font-medium text-white transition shadow-sm w-full sm:w-auto">
+                    ตกลง
+                </button>
+            </div>
+        </div>
+    </div>
 
-        // ตัวแปรสำหรับการแบ่งหน้า (Pagination)
+    <script>
+        let myMonthlyChart, myTypeChart;
+        let globalTableData = [];
+        let filteredTableData = [];
+
         let currentPage = 1;
-        const rowsPerPage = 15; 
-        
-        document.addEventListener("DOMContentLoaded", loadAllData);
+        const rowsPerPage = 15;
+
+        document.addEventListener("DOMContentLoaded", function () {
+            loadAllData();
+            initDragAndDrop();
+        });
+
+        function showModal(title, message, isSuccess = true) {
+            const modal = document.getElementById('custom-modal');
+            const modalContainer = document.getElementById('modal-container');
+            const modalTitle = document.getElementById('modal-title');
+            const modalMessage = document.getElementById('modal-message');
+            const iconContainer = document.getElementById('modal-icon-container');
+            const modalBtn = document.getElementById('modal-btn');
+
+            modalTitle.innerText = title;
+            modalMessage.innerText = message;
+
+            if (isSuccess) {
+                iconContainer.className = "mx-auto w-16 h-16 rounded-full flex items-center justify-center text-3xl mb-4 bg-green-100 text-green-600";
+                iconContainer.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+                modalBtn.className = "px-6 py-2 rounded-lg font-medium text-white transition shadow-sm w-full sm:w-auto bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500/50 outline-none";
+            } else {
+                iconContainer.className = "mx-auto w-16 h-16 rounded-full flex items-center justify-center text-3xl mb-4 bg-red-100 text-red-600";
+                iconContainer.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i>';
+                modalBtn.className = "px-6 py-2 rounded-lg font-medium text-white transition shadow-sm w-full sm:w-auto bg-red-600 hover:bg-red-700 focus:ring-2 focus:ring-red-500/50 outline-none";
+            }
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalContainer.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('custom-modal');
+            const modalContainer = document.getElementById('modal-container');
+
+            modal.classList.add('opacity-0');
+            modalContainer.classList.add('scale-95');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function initDragAndDrop() {
+            const dropZone = document.getElementById('drop-zone');
+            const fileBrowse = document.getElementById('file-browse');
+
+            dropZone.addEventListener('click', () => fileBrowse.click());
+
+            fileBrowse.addEventListener('change', (e) => handleFiles(e.target.files));
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-blue-500', 'bg-blue-50');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+                handleFiles(e.dataTransfer.files);
+            });
+        }
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+            const file = files[0];
+            const fileName = file.name.toLowerCase();
+            
+            if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    const csvText = XLSX.utils.sheet_to_csv(worksheet);
+                    
+                    document.getElementById('csv-input').value = csvText;
+                    updateFileDisplay(file.name);
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('csv-input').value = e.target.result;
+                    updateFileDisplay(file.name);
+                };
+                reader.readAsText(file, 'UTF-8'); 
+            }
+        }
+
+        function updateFileDisplay(fileName) {
+            document.getElementById('file-name-text').innerText = fileName;
+            document.getElementById('file-info-display').classList.remove('hidden');
+            document.getElementById('file-info-display').classList.add('flex');
+            
+            showModal("โหลดไฟล์สำเร็จ", `ดึงข้อมูลจากไฟล์ "${fileName}" เรียบร้อยแล้ว กรุณากดปุ่ม "ประมวลผลและอัปเดต" เพื่อบันทึกข้อมูล`, true);
+        }
 
         function loadAllData() {
             setLoadingStatus(true);
-            
-            google.script.run.withSuccessHandler(function(data) {
+
+            google.script.run.withSuccessHandler(function (data) {
                 document.getElementById('kpi-in').innerText = data.totalIn || 0;
                 document.getElementById('kpi-out').innerText = data.totalOut || 0;
                 document.getElementById('kpi-bal').innerText = data.balance || 0;
@@ -303,26 +514,25 @@
             google.script.run.withSuccessHandler(renderCharts).getChartData();
             google.script.run.withSuccessHandler(populateFilters).getFilterOptions();
 
-            google.script.run.withSuccessHandler(function(data) {
-                globalTableData = data; 
-                filteredTableData = [...data]; 
-                
-                // หาค่า Qty Out สูงสุดเพื่อตั้งค่า Slider อัตโนมัติ
+            google.script.run.withSuccessHandler(function (data) {
+                globalTableData = data;
+                filteredTableData = [...data];
+
                 let maxOut = 0;
                 data.forEach(row => {
                     const outVal = Number(row['จ่ายออก (OUT)']);
                     if (!isNaN(outVal) && outVal > maxOut) maxOut = outVal;
                 });
-                if (maxOut === 0) maxOut = 200; // ค่าเริ่มต้นกรณีไม่มีข้อมูล
-                
+                if (maxOut === 0) maxOut = 200;
+
                 const qtySlider = document.getElementById('filter-qty-max');
-                if(qtySlider) {
+                if (qtySlider) {
                     qtySlider.max = maxOut;
                     qtySlider.value = maxOut;
                     updateQtyLabel(maxOut);
                 }
 
-                currentPage = 1; 
+                currentPage = 1;
                 renderTable(filteredTableData);
                 setLoadingStatus(false);
             }).getTableData();
@@ -330,7 +540,7 @@
 
         function setLoadingStatus(isLoading) {
             const statusEl = document.getElementById('status-indicator');
-            if(isLoading) {
+            if (isLoading) {
                 statusEl.innerHTML = '<div class="loader w-3 h-3 border-2 border-t-blue-400 mr-2"></div> กำลังดึงข้อมูล...';
                 statusEl.className = 'bg-blue-600/20 text-blue-300 border border-blue-500/30 px-3 py-1 rounded-full text-sm flex items-center';
             } else {
@@ -342,44 +552,51 @@
         function uploadData() {
             const csvText = document.getElementById('csv-input').value;
             const isAppend = document.getElementById('append-checkbox').checked;
-            
-            if(!csvText.trim()) {
-                alert("กรุณาวางข้อมูล CSV ก่อนกดอัปเดต"); return;
+
+            if (!csvText.trim()) {
+                showModal("แจ้งเตือน", "กรุณาวางข้อความหรือเลือกใช้ระบบลากวางไฟล์ข้อมูลก่อนกดอัปเดต", false);
+                return;
             }
-            
+
             const btn = document.getElementById('upload-btn');
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> กำลังอัปเดต...';
             btn.disabled = true;
 
-            google.script.run.withSuccessHandler(function(res) {
-                alert(res.message);
-                document.getElementById('csv-input').value = '';
+            google.script.run.withSuccessHandler(function (res) {
                 btn.innerHTML = '<i class="fa-solid fa-bolt mr-2"></i> ประมวลผลและอัปเดต';
                 btn.disabled = false;
-                if(res.status === 'success') loadAllData();
+
+                if (res.status === 'success') {
+                    showModal("นำเข้าข้อมูลสำเร็จ", res.message, true);
+                    document.getElementById('csv-input').value = '';
+                    document.getElementById('file-info-display').classList.remove('flex');
+                    document.getElementById('file-info-display').classList.add('hidden');
+                    document.getElementById('file-browse').value = '';
+                    loadAllData();
+                } else {
+                    showModal("เกิดข้อผิดพลาด", res.message, false);
+                }
             }).processCsvUpload(csvText, isAppend);
         }
 
-        // --- ส่วน Pagination ---
         function renderTable(dataArray) {
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
-            
-            if(dataArray.length === 0) {
+
+            if (dataArray.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="13" class="text-center py-8 text-red-400">ไม่พบข้อมูลในระบบ</td></tr>';
                 document.getElementById('table-info').innerText = "แสดง 0 รายการ";
                 updatePaginationControls(0);
                 return;
             }
 
-            // คำนวณช่วงข้อมูลที่จะแสดงในหน้านั้นๆ (หน้าละ 15 แถว)
             const startIndex = (currentPage - 1) * rowsPerPage;
             const endIndex = startIndex + rowsPerPage;
             const paginatedData = dataArray.slice(startIndex, endIndex);
 
             paginatedData.forEach((row, index) => {
                 const tr = document.createElement('tr');
-                const rowNum = startIndex + index + 1; // ลำดับที่แถวต่อเนื่องข้ามหน้า
+                const rowNum = startIndex + index + 1;
                 tr.innerHTML = `
                     <td class="text-center text-gray-400">${rowNum}</td>
                     <td class="font-medium text-gray-800">${row['รหัสบรรจุภัณฑ์'] || '-'}</td>
@@ -397,27 +614,27 @@
                 `;
                 tbody.appendChild(tr);
             });
-            
+
             const startDisplay = startIndex + 1;
             const endDisplay = Math.min(endIndex, dataArray.length);
             document.getElementById('table-info').innerText = `แสดงรายการที่ ${startDisplay} ถึง ${endDisplay} จากทั้งหมด ${dataArray.length} รายการ`;
-            
+
             updatePaginationControls(dataArray.length);
         }
 
         function updatePaginationControls(totalItems) {
             const totalPages = Math.ceil(totalItems / rowsPerPage) || 1;
-            
+
             const currentEl = document.getElementById('current-page-text');
             const totalEl = document.getElementById('total-pages-text');
-            if(currentEl) currentEl.innerText = currentPage;
-            if(totalEl) totalEl.innerText = totalPages;
-            
+            if (currentEl) currentEl.innerText = currentPage;
+            if (totalEl) totalEl.innerText = totalPages;
+
             const btnPrev = document.getElementById('btn-prev');
             const btnNext = document.getElementById('btn-next');
-            
-            if(btnPrev) btnPrev.disabled = (currentPage === 1 || totalItems === 0);
-            if(btnNext) btnNext.disabled = (currentPage === totalPages || totalItems === 0);
+
+            if (btnPrev) btnPrev.disabled = (currentPage === 1 || totalItems === 0);
+            if (btnNext) btnNext.disabled = (currentPage === totalPages || totalItems === 0);
         }
 
         function prevPage() {
@@ -451,7 +668,7 @@
         function updateQtyLabel(val) {
             const slider = document.getElementById('filter-qty-max');
             const label = document.getElementById('qty-max-label');
-            if(slider && label) {
+            if (slider && label) {
                 label.innerText = (val == slider.max) ? "ทั้งหมด" : val + " ถัง";
             }
         }
@@ -462,81 +679,76 @@
             const fName = document.getElementById('filter-name').value;
             const fSup = document.getElementById('filter-sup').value;
             const fBatch = document.getElementById('filter-batch').value;
-            
+
             const fDest = document.getElementById('filter-dest').value;
             const fRecStart = document.getElementById('filter-rec-start').value;
             const fRecEnd = document.getElementById('filter-rec-end').value;
             const fDelStart = document.getElementById('filter-del-start').value;
             const fDelEnd = document.getElementById('filter-del-end').value;
-            
+
             const qtySlider = document.getElementById('filter-qty-max');
             const fQtyMax = qtySlider ? qtySlider.value : null;
             const maxQtyLimit = qtySlider ? qtySlider.max : null;
 
             const parseDateStr = (dateStr) => {
-                if(!dateStr || dateStr === '-') return null;
+                if (!dateStr || dateStr === '-') return null;
                 const d = new Date(dateStr);
                 return isNaN(d.getTime()) ? null : d;
             };
 
             const recStart = fRecStart ? new Date(fRecStart) : null;
-            if(recStart) recStart.setHours(0,0,0,0);
+            if (recStart) recStart.setHours(0, 0, 0, 0);
             const recEnd = fRecEnd ? new Date(fRecEnd) : null;
-            if(recEnd) recEnd.setHours(23,59,59,999);
-            
+            if (recEnd) recEnd.setHours(23, 59, 59, 999);
+
             const delStart = fDelStart ? new Date(fDelStart) : null;
-            if(delStart) delStart.setHours(0,0,0,0);
+            if (delStart) delStart.setHours(0, 0, 0, 0);
             const delEnd = fDelEnd ? new Date(fDelEnd) : null;
-            if(delEnd) delEnd.setHours(23,59,59,999);
+            if (delEnd) delEnd.setHours(23, 59, 59, 999);
 
             filteredTableData = globalTableData.filter(row => {
                 let match = true;
-                
-                // Text Filters
-                if(fCode && row['รหัสบรรจุภัณฑ์'] !== fCode) match = false;
-                if(fName && row['ประเภท/ชื่อ'] !== fName) match = false;
-                if(fSup && row['ผู้จัดจำหน่าย'] !== fSup) match = false;
-                if(fBatch && row['ล็อตแบทช์'] !== fBatch) match = false;
-                if(fDest && row['ปลายทางบรรจุ'] !== fDest) match = false;
-                
-                // Max Quantity Out Filter
-                if(fQtyMax && fQtyMax != maxQtyLimit) {
+
+                if (fCode && row['รหัสบรรจุภัณฑ์'] !== fCode) match = false;
+                if (fName && row['ประเภท/ชื่อ'] !== fName) match = false;
+                if (fSup && row['ผู้จัดจำหน่าย'] !== fSup) match = false;
+                if (fBatch && row['ล็อตแบทช์'] !== fBatch) match = false;
+                if (fDest && row['ปลายทางบรรจุ'] !== fDest) match = false;
+
+                if (fQtyMax && fQtyMax != maxQtyLimit) {
                     const outQty = row['จ่ายออก (OUT)'];
                     if (outQty !== "" && !isNaN(outQty)) {
                         if (Number(outQty) > Number(fQtyMax)) match = false;
                     }
                 }
 
-                // Record Date Range Filter
-                if(recStart || recEnd) {
+                if (recStart || recEnd) {
                     const rDate = parseDateStr(row['วันที่บันทึก']);
-                    if(!rDate) { match = false; } 
+                    if (!rDate) { match = false; }
                     else {
-                        if(recStart && rDate < recStart) match = false;
-                        if(recEnd && rDate > recEnd) match = false;
+                        if (recStart && rDate < recStart) match = false;
+                        if (recEnd && rDate > recEnd) match = false;
                     }
                 }
 
-                // Delivered Date Range Filter
-                if(delStart || delEnd) {
+                if (delStart || delEnd) {
                     const dDate = parseDateStr(row['วันจัดส่ง']);
-                    if(!dDate) { match = false; }
+                    if (!dDate) { match = false; }
                     else {
-                        if(delStart && dDate < delStart) match = false;
-                        if(delEnd && dDate > delEnd) match = false;
+                        if (delStart && dDate < delStart) match = false;
+                        if (delEnd && dDate > delEnd) match = false;
                     }
                 }
-                
-                // Search Box Filter
-                if(searchVal) {
+
+                if (searchVal) {
                     const rowText = Object.values(row).join(" ").toLowerCase();
-                    if(!rowText.includes(searchVal)) match = false;
+                    if (!rowText.includes(searchVal)) match = false;
                 }
-                
+
                 return match;
             });
-            
-            currentPage = 1; 
+
+            currentPage = 1;
             renderTable(filteredTableData);
         }
 
@@ -546,27 +758,27 @@
             document.getElementById('filter-name').value = '';
             document.getElementById('filter-sup').value = '';
             document.getElementById('filter-batch').value = '';
-            
+
             document.getElementById('filter-dest').value = '';
             document.getElementById('filter-rec-start').value = '';
             document.getElementById('filter-rec-end').value = '';
             document.getElementById('filter-del-start').value = '';
             document.getElementById('filter-del-end').value = '';
-            
+
             const qtySlider = document.getElementById('filter-qty-max');
-            if(qtySlider) {
+            if (qtySlider) {
                 qtySlider.value = qtySlider.max;
                 updateQtyLabel(qtySlider.max);
             }
-            
+
             filteredTableData = [...globalTableData];
             currentPage = 1;
             renderTable(filteredTableData);
         }
 
         function renderCharts(chartData) {
-            if(myMonthlyChart) myMonthlyChart.destroy();
-            if(myTypeChart) myTypeChart.destroy();
+            if (myMonthlyChart) myMonthlyChart.destroy();
+            if (myTypeChart) myTypeChart.destroy();
 
             const ctxMonthly = document.getElementById('monthlyChart').getContext('2d');
             myMonthlyChart = new Chart(ctxMonthly, {
@@ -597,4 +809,5 @@
         }
     </script>
 </body>
+
 </html>

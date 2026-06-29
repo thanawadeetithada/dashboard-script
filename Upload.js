@@ -1,24 +1,24 @@
 function processCsvUpload(csvContent, isAppend) {
   try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet(); // บันทึกลงชีตที่กำลังเปิดอยู่
-    const parsedData = Utilities.parseCsv(csvContent);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheets()[0]; 
+    const delimiter = csvContent.indexOf('\t') !== -1 ? '\t' : ',';
+    const parsedData = Utilities.parseCsv(csvContent, delimiter);
     
-    if (parsedData.length === 0) throw new Error("ไม่พบข้อมูลในไฟล์ CSV");
+    if (parsedData.length === 0) throw new Error("ไม่พบข้อมูลสำหรับอัปเดต");
     
     if (!isAppend) {
-      sheet.clear();
-      sheet.getRange(1, 1, parsedData.length, parsedData[0].length).setValues(parsedData);
-    } else {
-      const dataToAppend = parsedData.length > 1 ? parsedData.slice(1) : parsedData;
-      const lastRow = sheet.getLastRow();
-      
-      if (lastRow === 0) {
-        sheet.getRange(1, 1, parsedData.length, parsedData[0].length).setValues(parsedData);
-      } else {
-        sheet.getRange(lastRow + 1, 1, dataToAppend.length, dataToAppend[0].length).setValues(dataToAppend);
+      const lastRow = Math.max(sheet.getLastRow(), 4);
+      if (lastRow > 4) {
+        sheet.getRange(5, 1, lastRow - 4, sheet.getLastColumn()).clearContent();
       }
+      sheet.getRange(5, 1, parsedData.length, parsedData[0].length).setValues(parsedData);
+    } else {
+      const lastRow = Math.max(sheet.getLastRow(), 4);
+      sheet.getRange(lastRow + 1, 1, parsedData.length, parsedData[0].length).setValues(parsedData);
     }
-    return { status: 'success', message: 'นำเข้าข้อมูลเรียบร้อยแล้ว' };
+    
+    return { status: 'success', message: `นำเข้าข้อมูลจำนวน ${parsedData.length} รายการ เรียบร้อยแล้ว` };
   } catch (error) {
     return { status: 'error', message: 'เกิดข้อผิดพลาด: ' + error.toString() };
   }
