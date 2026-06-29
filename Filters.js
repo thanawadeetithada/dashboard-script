@@ -6,7 +6,6 @@ function getFilterOptions() {
   for (let i = 0; i < data.length; i++) {
     if (data[i]['รหัสบรรจุภัณฑ์']) codes.add(data[i]['รหัสบรรจุภัณฑ์']);
     
-    // สำคัญ: เปลี่ยนมาดึง 'ชื่อชีท' เพื่อเอาไปใส่ใน Dropdown
     if (data[i]['ชื่อชีท']) names.add(data[i]['ชื่อชีท']); 
     
     if (data[i]['ผู้จัดจำหน่าย']) suppliers.add(data[i]['ผู้จัดจำหน่าย']);

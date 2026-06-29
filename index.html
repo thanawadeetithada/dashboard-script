@@ -692,7 +692,7 @@
       function filterTable() {
             const searchVal = document.getElementById('search-input').value.toLowerCase();
             const fCode = document.getElementById('filter-code').value;
-            const fName = document.getElementById('filter-name').value; // ค่าที่เลือกมาจะเป็นชื่อชีท
+            const fName = document.getElementById('filter-name').value;
             const fSup = document.getElementById('filter-sup').value;
             const fBatch = document.getElementById('filter-batch').value;
             
@@ -725,15 +725,11 @@
             filteredTableData = globalTableData.filter(row => {
                 let match = true;
                 
-                if(fCode && row['รหัสบรรจุภัณฑ์'] !== fCode) match = false;
-                
-                // สำคัญ: ต้องเปรียบเทียบ fName กับ 'ชื่อชีท' (ไม่ใช่ 'ประเภท/ชื่อ' อีกต่อไป)
+                if(fCode && row['รหัสบรรจุภัณฑ์'] !== fCode) match = false;          
                 if(fName && row['ชื่อชีท'] !== fName) match = false;
-                
                 if(fSup && row['ผู้จัดจำหน่าย'] !== fSup) match = false;
                 if(fBatch && row['ล็อตแบทช์'] !== fBatch) match = false;
-                if(fDest && row['ปลายทางบรรจุ'] !== fDest) match = false;
-                
+                if(fDest && row['ปลายทางบรรจุ'] !== fDest) match = false;             
                 if(fQtyMax && fQtyMax != maxQtyLimit) {
                     const outQty = row['จ่ายออก (OUT)'];
                     if (outQty !== "" && !isNaN(outQty)) {

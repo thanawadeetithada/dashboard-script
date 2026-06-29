@@ -18,7 +18,7 @@ function getCleanDataAllSheets() {
   
   for (let s = 0; s < sheets.length; s++) {
     const sheet = sheets[s];
-    const sheetName = sheet.getName(); // ดึงชื่อชีทมาเก็บไว้
+    const sheetName = sheet.getName();
     const data = sheet.getDataRange().getValues();
     
     let currentCode = "";
@@ -46,8 +46,8 @@ function getCleanDataAllSheets() {
       
       let rowObj = {
         'รหัสบรรจุภัณฑ์': currentCode,
-        'ประเภท/ชื่อ': currentName, // ชื่อสินค้าดิบ เอาไว้แสดงในตาราง
-        'ชื่อชีท': sheetName,      // ชื่อชีท เอาไว้ใช้ทำ Dropdown และค้นหา
+        'ประเภท/ชื่อ': currentName,
+        'ชื่อชีท': sheetName,
         'ผู้จัดจำหน่าย': currentSupplier,
         'ล็อตแบทช์': currentBatch,
         'วันผลิต': currentMfgDate,
@@ -78,7 +78,7 @@ function getFilterOptions() {
   
   for (let i = 0; i < data.length; i++) {
     if (data[i]['รหัสบรรจุภัณฑ์']) codes.add(data[i]['รหัสบรรจุภัณฑ์']);
-    if (data[i]['ชื่อชีท']) names.add(data[i]['ชื่อชีท']); // แก้ไขจาก 'ประเภท/ชื่อ' เป็น 'ชื่อชีท' เพื่อดึงชื่อชีทไปแสดงในดรอปดาวน์ตัวกรอง
+    if (data[i]['ชื่อชีท']) names.add(data[i]['ชื่อชีท']);
     if (data[i]['ผู้จัดจำหน่าย']) suppliers.add(data[i]['ผู้จัดจำหน่าย']);
     if (data[i]['ล็อตแบทช์']) batches.add(data[i]['ล็อตแบทช์']);
     if (data[i]['ปลายทางบรรจุ']) dests.add(data[i]['ปลายทางบรรจุ']);
@@ -86,7 +86,7 @@ function getFilterOptions() {
   
   return {
     productCodes: Array.from(codes).sort(),
-    productNames: Array.from(names).sort(), // ส่งรายชื่อชีทที่เรียงลำดับแล้วกลับไปให้ฝั่ง Client
+    productNames: Array.from(names).sort(),
     suppliers: Array.from(suppliers).sort(),
     batches: Array.from(batches).sort(),
     destinations: Array.from(dests).sort()
