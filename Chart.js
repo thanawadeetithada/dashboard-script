@@ -9,7 +9,6 @@ function getChartData() {
   let typeStats = {};
 
   for (let i = 0; i < data.length; i++) {
-    // กราฟรายเดือน
     let rawDate = data[i]['วันที่บันทึก']; 
     if (rawDate !== "") {
       let d = new Date(rawDate);
@@ -21,7 +20,6 @@ function getChartData() {
       }
     }
 
-    // กราฟสัดส่วนแยกตามประเภท (ใช้คอลัมน์รับเข้า)
     let typeName = data[i]['ประเภท/ชื่อ'];
     if (typeName !== "") {
       if (!typeStats[typeName]) typeStats[typeName] = 0;
