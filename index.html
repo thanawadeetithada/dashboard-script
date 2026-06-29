@@ -189,29 +189,29 @@
                 <!-- Row 2 -->
                 <div>
                     <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ปลายทางเบิกจ่าย (Delivered to)</span> <span>ทั้งหมด</span></label>
-                    <select class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                    <select id="filter-dest" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
                         <option value="">เลือก ปลายทาง...</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-xs text-gray-500 mb-1">ช่วงวันที่บันทึกธุรกรรม (Record Date)</label>
                     <div class="flex items-center space-x-2">
-                        <input type="date" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                        <input type="date" id="filter-rec-start" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
                         <span class="text-gray-400">-</span>
-                        <input type="date" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                        <input type="date" id="filter-rec-end" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
                     </div>
                 </div>
                 <div>
                     <label class="block text-xs text-gray-500 mb-1">ช่วงวันส่งมอบบรรจุภัณฑ์ (Delivered Date)</label>
                     <div class="flex items-center space-x-2">
-                        <input type="date" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                        <input type="date" id="filter-del-start" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
                         <span class="text-gray-400">-</span>
-                        <input type="date" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                        <input type="date" id="filter-del-end" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ปริมาณจ่ายออกสูงสุด (Max Qty Out)</span> <span class="font-bold text-blue-700">111 Drums</span></label>
-                    <input type="range" min="0" max="200" value="111" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ปริมาณจ่ายออกสูงสุด (Max Qty Out)</span> <span id="qty-max-label" class="font-bold text-blue-700">ทั้งหมด</span></label>
+                    <input type="range" id="filter-qty-max" onchange="filterTable()" oninput="updateQtyLabel(this.value)" min="0" max="200" value="200" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
                 </div>
             </div>
         </div>
@@ -246,10 +246,12 @@
                             <th class="text-orange-400">จ่ายออก (OUT)</th>
                             <th>ปลายทางบรรจุ</th>
                             <th>วันจัดส่ง</th>
+                            <th>เลขที่ใบจ่าย/ remark</th>
+                            <th class="text-teal-400">ยอดคงแบทซ์</th>
                         </tr>
                     </thead>
                     <tbody id="table-body">
-                        <tr><td colspan="11" class="text-center py-8 text-gray-400">กำลังโหลดข้อมูลตาราง...</td></tr>
+                        <tr><td colspan="13" class="text-center py-8 text-gray-400">กำลังโหลดข้อมูลตาราง...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -303,8 +305,24 @@
 
             google.script.run.withSuccessHandler(function(data) {
                 globalTableData = data; 
-                filteredTableData = [...data]; // สำเนาข้อมูลทั้งหมดไว้ตอนเริ่มแรก
-                currentPage = 1; // รีเซ็ตหน้ากลับไปที่ 1 เมื่อโหลดข้อมูลใหม่
+                filteredTableData = [...data]; 
+                
+                // หาค่า Qty Out สูงสุดเพื่อตั้งค่า Slider อัตโนมัติ
+                let maxOut = 0;
+                data.forEach(row => {
+                    const outVal = Number(row['จ่ายออก (OUT)']);
+                    if (!isNaN(outVal) && outVal > maxOut) maxOut = outVal;
+                });
+                if (maxOut === 0) maxOut = 200; // ค่าเริ่มต้นกรณีไม่มีข้อมูล
+                
+                const qtySlider = document.getElementById('filter-qty-max');
+                if(qtySlider) {
+                    qtySlider.max = maxOut;
+                    qtySlider.value = maxOut;
+                    updateQtyLabel(maxOut);
+                }
+
+                currentPage = 1; 
                 renderTable(filteredTableData);
                 setLoadingStatus(false);
             }).getTableData();
@@ -348,7 +366,7 @@
             tbody.innerHTML = '';
             
             if(dataArray.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-red-400">ไม่พบข้อมูลในระบบ</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="13" class="text-center py-8 text-red-400">ไม่พบข้อมูลในระบบ</td></tr>';
                 document.getElementById('table-info').innerText = "แสดง 0 รายการ";
                 updatePaginationControls(0);
                 return;
@@ -369,11 +387,13 @@
                     <td class="text-gray-500">${row['ผู้จัดจำหน่าย'] || '-'}</td>
                     <td>${row['ล็อตแบทช์'] || '-'}</td>
                     <td>${row['วันผลิต'] || '-'}</td>
-                    <td class="text-blue-600 font-semibold">${row['รับเข้า (IN)'] || ''}</td>
+                    <td class="text-blue-600 font-semibold">${row['รับเข้า (IN)'] !== "" ? row['รับเข้า (IN)'] : ''}</td>
                     <td>${row['วันที่บันทึก'] || '-'}</td>
-                    <td class="text-orange-500 font-semibold">${row['จ่ายออก (OUT)'] || ''}</td>
+                    <td class="text-orange-500 font-semibold">${row['จ่ายออก (OUT)'] !== "" ? row['จ่ายออก (OUT)'] : ''}</td>
                     <td>${row['ปลายทางบรรจุ'] || '-'}</td>
                     <td>${row['วันจัดส่ง'] || '-'}</td>
+                    <td class="text-gray-600">${row['เลขที่ใบจ่าย/remark'] || '-'}</td>
+                    <td class="text-teal-600 font-bold">${row['ยอดคงแบทซ์'] !== "" ? row['ยอดคงแบทซ์'] : '-'}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -425,6 +445,15 @@
             createOptions(opts.productNames, 'filter-name');
             createOptions(opts.suppliers, 'filter-sup');
             createOptions(opts.batches, 'filter-batch');
+            createOptions(opts.destinations, 'filter-dest');
+        }
+
+        function updateQtyLabel(val) {
+            const slider = document.getElementById('filter-qty-max');
+            const label = document.getElementById('qty-max-label');
+            if(slider && label) {
+                label.innerText = (val == slider.max) ? "ทั้งหมด" : val + " ถัง";
+            }
         }
 
         function filterTable() {
@@ -433,18 +462,77 @@
             const fName = document.getElementById('filter-name').value;
             const fSup = document.getElementById('filter-sup').value;
             const fBatch = document.getElementById('filter-batch').value;
+            
+            const fDest = document.getElementById('filter-dest').value;
+            const fRecStart = document.getElementById('filter-rec-start').value;
+            const fRecEnd = document.getElementById('filter-rec-end').value;
+            const fDelStart = document.getElementById('filter-del-start').value;
+            const fDelEnd = document.getElementById('filter-del-end').value;
+            
+            const qtySlider = document.getElementById('filter-qty-max');
+            const fQtyMax = qtySlider ? qtySlider.value : null;
+            const maxQtyLimit = qtySlider ? qtySlider.max : null;
+
+            const parseDateStr = (dateStr) => {
+                if(!dateStr || dateStr === '-') return null;
+                const d = new Date(dateStr);
+                return isNaN(d.getTime()) ? null : d;
+            };
+
+            const recStart = fRecStart ? new Date(fRecStart) : null;
+            if(recStart) recStart.setHours(0,0,0,0);
+            const recEnd = fRecEnd ? new Date(fRecEnd) : null;
+            if(recEnd) recEnd.setHours(23,59,59,999);
+            
+            const delStart = fDelStart ? new Date(fDelStart) : null;
+            if(delStart) delStart.setHours(0,0,0,0);
+            const delEnd = fDelEnd ? new Date(fDelEnd) : null;
+            if(delEnd) delEnd.setHours(23,59,59,999);
 
             filteredTableData = globalTableData.filter(row => {
                 let match = true;
+                
+                // Text Filters
                 if(fCode && row['รหัสบรรจุภัณฑ์'] !== fCode) match = false;
                 if(fName && row['ประเภท/ชื่อ'] !== fName) match = false;
                 if(fSup && row['ผู้จัดจำหน่าย'] !== fSup) match = false;
                 if(fBatch && row['ล็อตแบทช์'] !== fBatch) match = false;
+                if(fDest && row['ปลายทางบรรจุ'] !== fDest) match = false;
                 
+                // Max Quantity Out Filter
+                if(fQtyMax && fQtyMax != maxQtyLimit) {
+                    const outQty = row['จ่ายออก (OUT)'];
+                    if (outQty !== "" && !isNaN(outQty)) {
+                        if (Number(outQty) > Number(fQtyMax)) match = false;
+                    }
+                }
+
+                // Record Date Range Filter
+                if(recStart || recEnd) {
+                    const rDate = parseDateStr(row['วันที่บันทึก']);
+                    if(!rDate) { match = false; } 
+                    else {
+                        if(recStart && rDate < recStart) match = false;
+                        if(recEnd && rDate > recEnd) match = false;
+                    }
+                }
+
+                // Delivered Date Range Filter
+                if(delStart || delEnd) {
+                    const dDate = parseDateStr(row['วันจัดส่ง']);
+                    if(!dDate) { match = false; }
+                    else {
+                        if(delStart && dDate < delStart) match = false;
+                        if(delEnd && dDate > delEnd) match = false;
+                    }
+                }
+                
+                // Search Box Filter
                 if(searchVal) {
                     const rowText = Object.values(row).join(" ").toLowerCase();
                     if(!rowText.includes(searchVal)) match = false;
                 }
+                
                 return match;
             });
             
@@ -458,6 +546,18 @@
             document.getElementById('filter-name').value = '';
             document.getElementById('filter-sup').value = '';
             document.getElementById('filter-batch').value = '';
+            
+            document.getElementById('filter-dest').value = '';
+            document.getElementById('filter-rec-start').value = '';
+            document.getElementById('filter-rec-end').value = '';
+            document.getElementById('filter-del-start').value = '';
+            document.getElementById('filter-del-end').value = '';
+            
+            const qtySlider = document.getElementById('filter-qty-max');
+            if(qtySlider) {
+                qtySlider.value = qtySlider.max;
+                updateQtyLabel(qtySlider.max);
+            }
             
             filteredTableData = [...globalTableData];
             currentPage = 1;
