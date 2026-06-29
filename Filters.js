@@ -5,7 +5,10 @@ function getFilterOptions() {
   
   for (let i = 0; i < data.length; i++) {
     if (data[i]['รหัสบรรจุภัณฑ์']) codes.add(data[i]['รหัสบรรจุภัณฑ์']);
-    if (data[i]['ประเภท/ชื่อ']) names.add(data[i]['ประเภท/ชื่อ']);
+    
+    // สำคัญ: เปลี่ยนมาดึง 'ชื่อชีท' เพื่อเอาไปใส่ใน Dropdown
+    if (data[i]['ชื่อชีท']) names.add(data[i]['ชื่อชีท']); 
+    
     if (data[i]['ผู้จัดจำหน่าย']) suppliers.add(data[i]['ผู้จัดจำหน่าย']);
     if (data[i]['ล็อตแบทช์']) batches.add(data[i]['ล็อตแบทช์']);
     if (data[i]['ปลายทางบรรจุ']) dests.add(data[i]['ปลายทางบรรจุ']);

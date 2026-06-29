@@ -689,82 +689,85 @@
             }
         }
 
-        function filterTable() {
+      function filterTable() {
             const searchVal = document.getElementById('search-input').value.toLowerCase();
             const fCode = document.getElementById('filter-code').value;
-            const fName = document.getElementById('filter-name').value;
+            const fName = document.getElementById('filter-name').value; // ค่าที่เลือกมาจะเป็นชื่อชีท
             const fSup = document.getElementById('filter-sup').value;
             const fBatch = document.getElementById('filter-batch').value;
-
+            
             const fDest = document.getElementById('filter-dest').value;
             const fRecStart = document.getElementById('filter-rec-start').value;
             const fRecEnd = document.getElementById('filter-rec-end').value;
             const fDelStart = document.getElementById('filter-del-start').value;
             const fDelEnd = document.getElementById('filter-del-end').value;
-
+            
             const qtySlider = document.getElementById('filter-qty-max');
             const fQtyMax = qtySlider ? qtySlider.value : null;
             const maxQtyLimit = qtySlider ? qtySlider.max : null;
 
             const parseDateStr = (dateStr) => {
-                if (!dateStr || dateStr === '-') return null;
+                if(!dateStr || dateStr === '-') return null;
                 const d = new Date(dateStr);
                 return isNaN(d.getTime()) ? null : d;
             };
 
             const recStart = fRecStart ? new Date(fRecStart) : null;
-            if (recStart) recStart.setHours(0, 0, 0, 0);
+            if(recStart) recStart.setHours(0,0,0,0);
             const recEnd = fRecEnd ? new Date(fRecEnd) : null;
-            if (recEnd) recEnd.setHours(23, 59, 59, 999);
-
+            if(recEnd) recEnd.setHours(23,59,59,999);
+            
             const delStart = fDelStart ? new Date(fDelStart) : null;
-            if (delStart) delStart.setHours(0, 0, 0, 0);
+            if(delStart) delStart.setHours(0,0,0,0);
             const delEnd = fDelEnd ? new Date(fDelEnd) : null;
-            if (delEnd) delEnd.setHours(23, 59, 59, 999);
+            if(delEnd) delEnd.setHours(23,59,59,999);
 
             filteredTableData = globalTableData.filter(row => {
                 let match = true;
-
-                if (fCode && row['รหัสบรรจุภัณฑ์'] !== fCode) match = false;
-                if (fName && row['ประเภท/ชื่อ'] !== fName) match = false;
-                if (fSup && row['ผู้จัดจำหน่าย'] !== fSup) match = false;
-                if (fBatch && row['ล็อตแบทช์'] !== fBatch) match = false;
-                if (fDest && row['ปลายทางบรรจุ'] !== fDest) match = false;
-
-                if (fQtyMax && fQtyMax != maxQtyLimit) {
+                
+                if(fCode && row['รหัสบรรจุภัณฑ์'] !== fCode) match = false;
+                
+                // สำคัญ: ต้องเปรียบเทียบ fName กับ 'ชื่อชีท' (ไม่ใช่ 'ประเภท/ชื่อ' อีกต่อไป)
+                if(fName && row['ชื่อชีท'] !== fName) match = false;
+                
+                if(fSup && row['ผู้จัดจำหน่าย'] !== fSup) match = false;
+                if(fBatch && row['ล็อตแบทช์'] !== fBatch) match = false;
+                if(fDest && row['ปลายทางบรรจุ'] !== fDest) match = false;
+                
+                if(fQtyMax && fQtyMax != maxQtyLimit) {
                     const outQty = row['จ่ายออก (OUT)'];
                     if (outQty !== "" && !isNaN(outQty)) {
                         if (Number(outQty) > Number(fQtyMax)) match = false;
                     }
                 }
 
-                if (recStart || recEnd) {
+                if(recStart || recEnd) {
                     const rDate = parseDateStr(row['วันที่บันทึก']);
-                    if (!rDate) { match = false; }
+                    if(!rDate) { match = false; } 
                     else {
-                        if (recStart && rDate < recStart) match = false;
-                        if (recEnd && rDate > recEnd) match = false;
+                        if(recStart && rDate < recStart) match = false;
+                        if(recEnd && rDate > recEnd) match = false;
                     }
                 }
 
-                if (delStart || delEnd) {
+                if(delStart || delEnd) {
                     const dDate = parseDateStr(row['วันจัดส่ง']);
-                    if (!dDate) { match = false; }
+                    if(!dDate) { match = false; }
                     else {
-                        if (delStart && dDate < delStart) match = false;
-                        if (delEnd && dDate > delEnd) match = false;
+                        if(delStart && dDate < delStart) match = false;
+                        if(delEnd && dDate > delEnd) match = false;
                     }
                 }
-
-                if (searchVal) {
+                
+                if(searchVal) {
                     const rowText = Object.values(row).join(" ").toLowerCase();
-                    if (!rowText.includes(searchVal)) match = false;
+                    if(!rowText.includes(searchVal)) match = false;
                 }
-
+                
                 return match;
             });
-
-            currentPage = 1;
+            
+            currentPage = 1; 
             renderTable(filteredTableData);
         }
 
