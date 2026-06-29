@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PM Movement Analytics Dashboard</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#1e3a8a',
+                        secondary: '#3b82f6',
+                        darkBg: '#0f172a',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #f8fafc; }
+        .glass-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            padding: 1.5rem;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        table th {
+            background-color: #0f172a;
+            color: white;
+            font-weight: 500;
+            text-align: left;
+            padding: 1rem;
+            white-space: nowrap;
+        }
+        table td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            white-space: nowrap;
+            color: #475569;
+        }
+        table tr:hover { background-color: #f1f5f9; }
+        
+        .kpi-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body class="text-gray-800 font-sans">
+
+    <!-- Navbar -->
+    <nav class="bg-darkBg text-white px-6 py-4 flex justify-between items-center shadow-md">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-chart-line text-2xl text-blue-400"></i>
+            <div>
+                <h1 class="text-xl font-bold leading-tight">PM Movement Analytics</h1>
+                <p class="text-xs text-gray-400">แดชบอร์ดวิเคราะห์และควบคุมคลังสินค้าบรรจุภัณฑ์เชิงรุก</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span class="bg-blue-600/20 text-blue-300 border border-blue-500/30 px-3 py-1 rounded-full text-sm flex items-center">
+                <div class="w-2 h-2 bg-green-400 rounded-full mr-2"></div> พร้อมเชื่อมต่อข้อมูลจริง
+            </span>
+            <button class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm transition flex items-center">
+                <i class="fa-solid fa-cloud-arrow-up mr-2"></i> อัปโหลดข้อมูลเพิ่ม (Real-time)
+            </button>
+            <button class="text-gray-400 hover:text-white"><i class="fa-solid fa-moon text-xl"></i></button>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-6 max-w-7xl space-y-6">
+
+        <!-- Data Import Section -->
+        <div class="glass-card">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold flex items-center text-blue-800">
+                    <i class="fa-solid fa-file-import mr-2"></i> นำเข้าไฟล์ข้อมูลชุดใหม่ (Real-time CSV Uploader)
+                </h2>
+                <button class="text-red-500 text-sm hover:underline"><i class="fa-solid fa-rotate-right mr-1"></i> รีเซ็ตกลับไปเป็นค่าเริ่มต้น</button>
+            </div>
+            <p class="text-sm text-gray-500 mb-4">คุณสามารถเพิ่มหรืออัปเดตไฟล์ข้อมูลความเคลื่อนไหวบรรจุภัณฑ์ (.csv) ได้โดยตรงที่นี่</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Drag & Drop -->
+                <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center text-center bg-gray-50 hover:bg-gray-100 transition cursor-pointer">
+                    <div class="bg-blue-100 text-blue-600 w-12 h-12 rounded-full flex items-center justify-center mb-3">
+                        <i class="fa-solid fa-arrow-up text-xl"></i>
+                    </div>
+                    <p class="font-medium">ลากและวางไฟล์ CSV ที่นี่</p>
+                    <p class="text-xs text-gray-400 mt-1">หรือคลิกเพื่อค้นหาและเลือกไฟล์จากเครื่องคอมพิวเตอร์ของคุณ</p>
+                </div>
+                
+                <!-- Raw Text / Excel Paste -->
+                <div class="flex flex-col">
+                    <textarea class="w-full h-full min-h-[120px] bg-darkBg text-green-400 p-4 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="หรือวางข้อความคัดลอกจาก Excel / CSV ของไฟล์..."></textarea>
+                    <div class="flex justify-between items-center mt-4">
+                        <label class="flex items-center text-sm text-gray-600 cursor-pointer">
+                            <input type="checkbox" class="mr-2 rounded text-blue-600 focus:ring-blue-500" checked> เพิ่มข้อมูลต่อท้ายจากข้อมูลเดิม (Append)
+                        </label>
+                        <button class="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2 rounded-lg font-medium transition flex items-center shadow-md">
+                            <i class="fa-solid fa-bolt mr-2"></i> ประมวลผลและอัปเดตข้อมูล
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <!-- Card 1 -->
+            <div class="glass-card flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">รับเข้าบรรจุภัณฑ์รวม</p>
+                    <h3 class="text-2xl font-bold text-gray-800">660 <span class="text-lg font-normal text-gray-500">ถัง</span></h3>
+                    <p class="text-xs text-green-500 mt-1"><i class="fa-solid fa-arrow-trend-up mr-1"></i> ยอดรับเข้าสะสม</p>
+                </div>
+                <div class="kpi-icon bg-blue-100 text-blue-600"><i class="fa-solid fa-download"></i></div>
+            </div>
+            <!-- Card 2 -->
+            <div class="glass-card flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">เบิกบรรจุใช้งานรวม</p>
+                    <h3 class="text-2xl font-bold text-gray-800">609 <span class="text-lg font-normal text-gray-500">ถัง</span></h3>
+                    <p class="text-xs text-orange-500 mt-1"><i class="fa-solid fa-arrow-trend-down mr-1"></i> จ่ายออกไปใช้งานจริง</p>
+                </div>
+                <div class="kpi-icon bg-orange-100 text-orange-600"><i class="fa-solid fa-upload"></i></div>
+            </div>
+            <!-- Card 3 -->
+            <div class="glass-card flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">คงคลังปัจจุบันรวม</p>
+                    <h3 class="text-2xl font-bold text-gray-800">0</h3>
+                    <p class="text-xs text-teal-500 mt-1"><i class="fa-solid fa-boxes-stacked mr-1"></i> คลังพร้อมเบิกใช้</p>
+                </div>
+                <div class="kpi-icon bg-teal-100 text-teal-600"><i class="fa-solid fa-cubes"></i></div>
+            </div>
+            <!-- Card 4 -->
+            <div class="glass-card flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">อัตราเบิกใช้งาน (MT)</p>
+                    <h3 class="text-2xl font-bold text-gray-800">0%</h3>
+                    <p class="text-xs text-gray-400 mt-1">เทียบสัดส่วนรับเข้า</p>
+                </div>
+                <div class="kpi-icon bg-indigo-100 text-indigo-600"><i class="fa-solid fa-chart-pie"></i></div>
+            </div>
+            <!-- Card 5 -->
+            <div class="glass-card flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">จำนวนล็อตนำเข้า</p>
+                    <h3 class="text-2xl font-bold text-gray-800">0</h3>
+                    <p class="text-xs text-gray-400 mt-1"><i class="fa-solid fa-list-ol mr-1"></i> ล็อตการผลิตแยกย่อย</p>
+                </div>
+                <div class="kpi-icon bg-gray-100 text-gray-600"><i class="fa-solid fa-clipboard-list"></i></div>
+            </div>
+        </div>
+
+        <!-- Charts Section (Added per user request) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Monthly Bar Chart -->
+            <div class="glass-card md:col-span-2">
+                <h3 class="text-md font-semibold text-gray-700 mb-4">สถิติการรับเข้าและเบิกจ่ายรายเดือน</h3>
+                <div class="relative h-[300px] w-full">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </div>
+            <!-- Donut Chart -->
+            <div class="glass-card">
+                <h3 class="text-md font-semibold text-gray-700 mb-4">สัดส่วนบรรจุภัณฑ์แยกตามประเภท</h3>
+                <div class="relative h-[300px] w-full flex justify-center">
+                    <canvas id="typeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="glass-card">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold flex items-center text-blue-800">
+                    <i class="fa-solid fa-filter mr-2"></i> แผงควบคุมตัวกรองอัจฉริยะ (Interactive Master Filters)
+                </h2>
+                <button class="text-blue-600 text-sm hover:underline font-medium"><i class="fa-solid fa-eraser mr-1"></i> ล้างตัวกรองทั้งหมด</button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <!-- Row 1 -->
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>รหัสสินค้า (Product Code)</span> <span>ทั้งหมด</span></label>
+                    <select class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                        <option>เลือก รหัส...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ชื่อสินค้า (Product Name)</span> <span>ทั้งหมด</span></label>
+                    <select class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                        <option>เลือก ชื่อ...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ผู้จัดจำหน่าย (Supplier)</span> <span>ทั้งหมด</span></label>
+                    <select class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                        <option>เลือก ซัพพลายเออร์...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>เลขที่ล็อต/แบทช์ (Batch No.)</span> <span>ทั้งหมด</span></label>
+                    <select class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                        <option>เลือก ล็อต...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!-- Row 2 -->
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ปลายทางเบิกจ่าย (Delivered to)</span> <span>ทั้งหมด</span></label>
+                    <select class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                        <option>เลือก ปลายทาง...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">ช่วงวันที่บันทึกธุรกรรม (Record Date)</label>
+                    <div class="flex items-center space-x-2">
+                        <input type="date" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                        <span class="text-gray-400">-</span>
+                        <input type="date" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">ช่วงวันส่งมอบบรรจุภัณฑ์ (Delivered Date)</label>
+                    <div class="flex items-center space-x-2">
+                        <input type="date" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                        <span class="text-gray-400">-</span>
+                        <input type="date" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ปริมาณจ่ายออกสูงสุด (Max Qty Out)</span> <span class="font-bold text-blue-700">111 Drums</span></label>
+                    <input type="range" min="0" max="200" value="111" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table Section -->
+        <div class="glass-card p-0 overflow-hidden">
+            <div class="p-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-white">
+                <div>
+                    <h2 class="text-lg font-semibold flex items-center text-blue-800">
+                        <i class="fa-solid fa-table-list mr-2"></i> ตารางบันทึกการเคลื่อนไหวบรรจุภัณฑ์โดยละเอียด (Packaging Movement Ledger)
+                    </h2>
+                    <p class="text-xs text-gray-500 mt-1">รวมรายละเอียดใบสั่งจ่าย ล็อตการนำเข้า ยอดคงเหลือ และหมายเหตุประกอบ</p>
+                </div>
+                <div class="flex items-center space-x-3 w-full md:w-auto">
+                    <div class="relative w-full md:w-64">
+                        <i class="fa-solid fa-search absolute left-3 top-2.5 text-gray-400 text-sm"></i>
+                        <input type="text" placeholder="ค้นหาข้อความใดๆ ในตาราง..." class="w-full border border-gray-300 rounded-full pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                    </div>
+                    <button class="bg-darkBg hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm transition flex items-center whitespace-nowrap shadow">
+                        <i class="fa-solid fa-file-csv mr-2"></i> ส่งออกเป็น CSV (Excel)
+                    </button>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr>
+                            <th class="w-12 text-center"># <i class="fa-solid fa-sort ml-1 text-gray-400"></i></th>
+                            <th>รหัสบรรจุภัณฑ์ <i class="fa-solid fa-sort ml-1 text-gray-400"></i></th>
+                            <th>ประเภท/ชื่อ <i class="fa-solid fa-sort ml-1 text-gray-400"></i></th>
+                            <th>ผู้จัดจำหน่าย</th>
+                            <th>ล็อตแบทช์</th>
+                            <th>วันผลิต</th>
+                            <th class="text-blue-400">รับเข้า (IN)</th>
+                            <th>วันที่บันทึก</th>
+                            <th class="text-orange-400">จ่ายออก (OUT)</th>
+                            <th>ปลายทางบรรจุ</th>
+                            <th>วันจัดส่ง</th>
+                            <th>เลขที่ใบจ่าย / REMARK</th>
+                            <th class="text-teal-400">ยอดคงแบทช์</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Row 1 -->
+                        <tr>
+                            <td class="text-center text-gray-400">1</td>
+                            <td class="font-medium text-gray-800">PMPE0200-001</td>
+                            <td>200L Plastic Drum L...</td>
+                            <td class="text-gray-500">Pack Delta</td>
+                            <td>15/05/26(A)</td>
+                            <td>15-May-26</td>
+                            <td class="text-blue-600 font-semibold">125</td>
+                            <td>06-Jun-26</td>
+                            <td class="text-orange-500 font-semibold">53</td>
+                            <td>เบิกบรรจุ FP GNE</td>
+                            <td>6-Jun-26</td>
+                            <td class="text-gray-400">ใบจ่าย202606003</td>
+                            <td class="text-teal-500 font-bold">0</td>
+                        </tr>
+                        <!-- Row 2 -->
+                        <tr>
+                            <td class="text-center text-gray-400">2</td>
+                            <td class="font-medium text-gray-800">PMPE0200-001</td>
+                            <td>200L Plastic Drum L...</td>
+                            <td class="text-gray-500">Pack Delta</td>
+                            <td>15/05/26(A)</td>
+                            <td>15-May-26</td>
+                            <td class="text-blue-600 font-semibold">125</td>
+                            <td>05-Jun-26</td>
+                            <td class="text-orange-500 font-semibold">26</td>
+                            <td>เบิกบรรจุ FP 80E</td>
+                            <td>5-Jun-26</td>
+                            <td class="text-gray-400">ใบจ่าย202606002</td>
+                            <td class="text-teal-500 font-bold">0</td>
+                        </tr>
+                        <!-- Row 3 -->
+                        <tr>
+                            <td class="text-center text-gray-400">3</td>
+                            <td class="font-medium text-gray-800">PMPE0200-001</td>
+                            <td>200L Plastic Drum L...</td>
+                            <td class="text-gray-500">Pack Delta</td>
+                            <td>15/05/26(A)</td>
+                            <td>15-May-26</td>
+                            <td class="text-blue-600 font-semibold">125</td>
+                            <td>03-Jun-26</td>
+                            <td class="text-orange-500 font-semibold">26</td>
+                            <td>เบิกบรรจุ FP GNU</td>
+                            <td>3-Jun-26</td>
+                            <td class="text-gray-400">ใบจ่าย202606001</td>
+                            <td class="text-teal-500 font-bold">0</td>
+                        </tr>
+                        <!-- Row 4 -->
+                        <tr>
+                            <td class="text-center text-gray-400">4</td>
+                            <td class="font-medium text-gray-800">PMPE0200-001</td>
+                            <td>200L Plastic Drum L...</td>
+                            <td class="text-gray-500">Pack Delta</td>
+                            <td>13/05/26(A,B)</td>
+                            <td>13-May-26</td>
+                            <td class="text-blue-600 font-semibold">125</td>
+                            <td>30-May-26</td>
+                            <td class="text-orange-500 font-semibold">31</td>
+                            <td>เบิกบรรจุ FP PT</td>
+                            <td>30-May-26</td>
+                            <td class="text-gray-400">ใบจ่าย202605012</td>
+                            <td class="text-teal-500 font-bold">0</td>
+                        </tr>
+                        <!-- Row 5 -->
+                        <tr>
+                            <td class="text-center text-gray-400">5</td>
+                            <td class="font-medium text-gray-800">PMPE0200-001</td>
+                            <td>200L Plastic Drum L...</td>
+                            <td class="text-gray-500">Pack Delta</td>
+                            <td>13/05/26(A,B)</td>
+                            <td>13-May-26</td>
+                            <td class="text-blue-600 font-semibold">125</td>
+                            <td>19-May-26</td>
+                            <td class="text-orange-500 font-semibold">56</td>
+                            <td>เบิกบรรจุ FP GNE</td>
+                            <td>19-May-26</td>
+                            <td class="text-gray-400">ใบจ่าย202605010</td>
+                            <td class="text-teal-500 font-bold">0</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination Mockup -->
+            <div class="p-4 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500 bg-gray-50">
+                <div>แสดง 1 ถึง 5 จาก 24 รายการ</div>
+                <div class="flex space-x-1">
+                    <button class="px-3 py-1 border rounded hover:bg-gray-200">ก่อนหน้า</button>
+                    <button class="px-3 py-1 bg-blue-600 text-white rounded">1</button>
+                    <button class="px-3 py-1 border rounded hover:bg-gray-200">2</button>
+                    <button class="px-3 py-1 border rounded hover:bg-gray-200">3</button>
+                    <button class="px-3 py-1 border rounded hover:bg-gray-200">ถัดไป</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Chart JS Setup Scripts -->
+    <script>
+        // Data for Monthly Bar Chart
+        const ctxMonthly = document.getElementById('monthlyChart').getContext('2d');
+        const monthlyChart = new Chart(ctxMonthly, {
+            type: 'bar',
+            data: {
+                labels: ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.'],
+                datasets: [
+                    {
+                        label: 'รับเข้า (IN)',
+                        data: [120, 150, 180, 130, 200, 125],
+                        backgroundColor: '#3b82f6', // blue-500
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'จ่ายออก (OUT)',
+                        data: [100, 140, 160, 120, 190, 136],
+                        backgroundColor: '#f97316', // orange-500
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+        // Data for Donut Chart
+        const ctxType = document.getElementById('typeChart').getContext('2d');
+        const typeChart = new Chart(ctxType, {
+            type: 'doughnut',
+            data: {
+                labels: ['200L Plastic Drum', '100L Steel Drum', 'IBC Tank', '20L Pail'],
+                datasets: [{
+                    data: [45, 25, 15, 15],
+                    backgroundColor: [
+                        '#1e3a8a', // blue-900
+                        '#3b82f6', // blue-500
+                        '#14b8a6', // teal-500
+                        '#f59e0b'  // amber-500
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                },
+                cutout: '70%'
+            }
+        });
+    </script>
+
+</body>
+</html>
