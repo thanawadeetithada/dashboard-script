@@ -1,28 +1,26 @@
 function getKPIData() {
-  const data = getSheetData();
-  if (data.length <= 1) return { totalIn: 0, totalOut: 0, balance: 0, mtRate: 0, batchCount: 0 };
+  // ดึงข้อมูลที่คลีนแล้วจากทุกชีต
+  const data = getCleanDataAllSheets();
   
   let totalIn = 0;
   let totalOut = 0;
   let batches = new Set();
   
-  const headers = data[0];
-  // หาตำแหน่งคอลัมน์ (ถ้าหาไม่เจอให้ใช้ตำแหน่ง Default)
-  const inIdx = headers.indexOf('รับเข้า (IN)') > -1 ? headers.indexOf('รับเข้า (IN)') : 6;
-  const outIdx = headers.indexOf('จ่ายออก (OUT)') > -1 ? headers.indexOf('จ่ายออก (OUT)') : 8;
-  const batchIdx = headers.indexOf('ล็อตแบทช์') > -1 ? headers.indexOf('ล็อตแบทช์') : 4;
-
-  for (let i = 1; i < data.length; i++) {
-    totalIn += Number(data[i][inIdx]) || 0;
-    totalOut += Number(data[i][outIdx]) || 0;
+  for (let i = 0; i < data.length; i++) {
+    // 1. รับเข้าบรรจุภัณฑ์รวม (Sum คอลัมน์ F ทุกชีต)
+    if (data[i]['รับเข้า (IN)'] !== "") totalIn += data[i]['รับเข้า (IN)'];
     
-    let batchVal = data[i][batchIdx];
-    if (batchVal && batchVal.toString().trim() !== "") {
-      batches.add(batchVal.toString().trim());
-    }
+    // 2. เบิกบรรจุใช้งานรวม (Sum คอลัมน์ H ทุกชีต)
+    if (data[i]['จ่ายออก (OUT)'] !== "") totalOut += data[i]['จ่ายออก (OUT)'];
+    
+    // 5. จำนวนล็อตนำเข้า (นับจากคอลัมน์ D)
+    if (data[i]['ล็อตแบทช์'] !== "") batches.add(data[i]['ล็อตแบทช์']);
   }
   
+  // 3. คงคลังปัจจุบันรวม (แทนที่จะหาคำว่า Total โค้ดจะดักคำนวณ IN - OUT ซึ่งจะได้ค่า 162 ตรงกันเป๊ะและแม่นยำกว่า)
   const balance = totalIn - totalOut;
+  
+  // 4. อัตราเบิกใช้งาน (MT) คิดเป็นเปอร์เซ็นต์จากปริมาณใช้งานเทียบกับรับเข้า
   const mtRate = totalIn > 0 ? ((totalOut / totalIn) * 100).toFixed(1) : 0;
   
   return {

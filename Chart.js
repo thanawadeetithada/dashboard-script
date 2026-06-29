@@ -1,37 +1,31 @@
 function getChartData() {
-  const data = getSheetData();
+  const data = getCleanDataAllSheets();
   let result = { 
     monthly: { labels: [], inData: [], outData: [] }, 
     type: { labels: [], data: [] } 
   };
   
-  if (data.length <= 1) return result;
-  
-  const headers = data[0];
-  const dateIdx = headers.indexOf('วันที่บันทึก') > -1 ? headers.indexOf('วันที่บันทึก') : 7;
-  const inIdx = headers.indexOf('รับเข้า (IN)') > -1 ? headers.indexOf('รับเข้า (IN)') : 6;
-  const outIdx = headers.indexOf('จ่ายออก (OUT)') > -1 ? headers.indexOf('จ่ายออก (OUT)') : 8;
-  const typeIdx = headers.indexOf('ประเภท/ชื่อ') > -1 ? headers.indexOf('ประเภท/ชื่อ') : 2;
-
   let monthlyStats = {};
   let typeStats = {};
 
-  for (let i = 1; i < data.length; i++) {
-    // 1. ข้อมูลรายเดือน
-    let rowDate = new Date(data[i][dateIdx]);
-    if (!isNaN(rowDate.getTime())) {
-      let monthYear = Utilities.formatDate(rowDate, "GMT+07:00", "MMM yyyy");
-      if (!monthlyStats[monthYear]) monthlyStats[monthYear] = { in: 0, out: 0 };
-      monthlyStats[monthYear].in += Number(data[i][inIdx]) || 0;
-      monthlyStats[monthYear].out += Number(data[i][outIdx]) || 0;
+  for (let i = 0; i < data.length; i++) {
+    // กราฟรายเดือน
+    let rawDate = data[i]['วันที่บันทึก']; 
+    if (rawDate !== "") {
+      let d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        let monthYear = Utilities.formatDate(d, "GMT+07:00", "MMM yyyy");
+        if (!monthlyStats[monthYear]) monthlyStats[monthYear] = { in: 0, out: 0 };
+        if (data[i]['รับเข้า (IN)'] !== "") monthlyStats[monthYear].in += data[i]['รับเข้า (IN)'];
+        if (data[i]['จ่ายออก (OUT)'] !== "") monthlyStats[monthYear].out += data[i]['จ่ายออก (OUT)'];
+      }
     }
 
-    // 2. ข้อมูลสัดส่วนประเภทบรรจุภัณฑ์ (ใช้ยอดรับเข้า)
-    let typeName = data[i][typeIdx];
-    if (typeName && typeName.toString().trim() !== "") {
-      let typeStr = typeName.toString().trim();
-      if (!typeStats[typeStr]) typeStats[typeStr] = 0;
-      typeStats[typeStr] += Number(data[i][inIdx]) || 0; 
+    // กราฟสัดส่วนแยกตามประเภท (ใช้คอลัมน์รับเข้า)
+    let typeName = data[i]['ประเภท/ชื่อ'];
+    if (typeName !== "") {
+      if (!typeStats[typeName]) typeStats[typeName] = 0;
+      if (data[i]['รับเข้า (IN)'] !== "") typeStats[typeName] += data[i]['รับเข้า (IN)'];
     }
   }
 

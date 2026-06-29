@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PM Movement Analytics Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Prompt', 'sans-serif'], },
+                    colors: { primary: '#1e3a8a', secondary: '#3b82f6', darkBg: '#0f172a', }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #f8fafc; }
+        .glass-card {
+            background: white; border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            padding: 1.5rem;
+        }
+        /* เอาขีดจำกัดความสูงออก และให้กว้าง 100% ภายใน Card เพื่อไม่ให้มี Scroll */
+        .table-container {  overflow-x: auto; }
+        table th {
+            background-color: #0f172a; color: white; font-weight: 500;
+            text-align: left; padding: 1rem; position: sticky; top: 0;
+        }
+        /* เอา white-space: nowrap ออก เพื่อให้ข้อความตัดขึ้นบรรทัดใหม่ได้ */
+        table td { 
+            padding: 1rem; border-bottom: 1px solid #e2e8f0; color: #475569; 
+        }
+        table tr:hover { background-color: #f1f5f9; }
+        .kpi-icon {
+            width: 48px; height: 48px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+        }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; margin-right: 8px;}
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-gray-800 font-sans">
+
+    <nav class="bg-darkBg text-white px-6 py-4 flex justify-between items-center shadow-md">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-chart-line text-2xl text-blue-400"></i>
+            <div>
+                <h1 class="text-xl font-bold leading-tight">PM Movement Analytics</h1>
+                <p class="text-xs text-gray-400">แดชบอร์ดวิเคราะห์และควบคุมคลังสินค้าบรรจุภัณฑ์เชิงรุก</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span id="status-indicator" class="bg-blue-600/20 text-blue-300 border border-blue-500/30 px-3 py-1 rounded-full text-sm flex items-center">
+                <div class="loader w-3 h-3 border-2 border-t-blue-400 mr-2"></div> กำลังโหลดข้อมูล...
+            </span>
+            <button onclick="loadAllData()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm transition flex items-center">
+                <i class="fa-solid fa-rotate-right mr-2"></i> รีเฟรชข้อมูล
+            </button>
+        </div>
+    </nav>
+
+    <!-- ปรับความกว้างกลับมาเป็นแบบมีขอบซ้ายขวา (container) ตามภาพตัวอย่าง -->
+    <div class="container mx-auto px-4 py-6 max-w-9xl space-y-6">
+
+        <div class="glass-card">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold flex items-center text-blue-800">
+                    <i class="fa-solid fa-file-import mr-2"></i> นำเข้าไฟล์ข้อมูลชุดใหม่ (CSV Uploader)
+                </h2>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center text-center bg-gray-50 hover:bg-gray-100 transition cursor-pointer">
+                    <div class="bg-blue-100 text-blue-600 w-12 h-12 rounded-full flex items-center justify-center mb-3">
+                        <i class="fa-solid fa-arrow-up text-xl"></i>
+                    </div>
+                    <p class="font-medium text-gray-500">ฟังก์ชันลากวางไฟล์ (ล่วงหน้า)</p>
+                </div>
+                
+                <div class="flex flex-col">
+                    <textarea id="csv-input" class="w-full h-full min-h-[120px] bg-darkBg text-green-400 p-4 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="วางข้อความคัดลอกจาก CSV หรือ Excel ที่นี่..."></textarea>
+                    <div class="flex justify-between items-center mt-4">
+                        <label class="flex items-center text-sm text-gray-600 cursor-pointer">
+                            <input type="checkbox" id="append-checkbox" class="mr-2 rounded text-blue-600 focus:ring-blue-500" checked> เพิ่มข้อมูลต่อท้าย (Append)
+                        </label>
+                        <button id="upload-btn" onclick="uploadData()" class="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2 rounded-lg font-medium transition flex items-center shadow-md">
+                            <i class="fa-solid fa-bolt mr-2"></i> ประมวลผลและอัปเดต
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div class="glass-card flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">รับเข้าบรรจุภัณฑ์รวม</p>
+                    <h3 class="text-2xl font-bold text-gray-800"><span id="kpi-in">-</span> <span class="text-lg font-normal text-gray-500">ถัง</span></h3>
+                </div>
+                <div class="kpi-icon bg-blue-100 text-blue-600"><i class="fa-solid fa-download"></i></div>
+            </div>
+            <div class="glass-card flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">เบิกบรรจุใช้งานรวม</p>
+                    <h3 class="text-2xl font-bold text-gray-800"><span id="kpi-out">-</span> <span class="text-lg font-normal text-gray-500">ถัง</span></h3>
+                </div>
+                <div class="kpi-icon bg-orange-100 text-orange-600"><i class="fa-solid fa-upload"></i></div>
+            </div>
+            <div class="glass-card flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">คงคลังปัจจุบันรวม</p>
+                    <h3 class="text-2xl font-bold text-gray-800" id="kpi-bal">-</h3>
+                </div>
+                <div class="kpi-icon bg-teal-100 text-teal-600"><i class="fa-solid fa-cubes"></i></div>
+            </div>
+            <div class="glass-card flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">อัตราเบิกใช้งาน (MT)</p>
+                    <h3 class="text-2xl font-bold text-gray-800" id="kpi-mt">-%</h3>
+                </div>
+                <div class="kpi-icon bg-indigo-100 text-indigo-600"><i class="fa-solid fa-chart-pie"></i></div>
+            </div>
+            <div class="glass-card flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">จำนวนล็อตนำเข้า</p>
+                    <h3 class="text-2xl font-bold text-gray-800" id="kpi-batch">-</h3>
+                </div>
+                <div class="kpi-icon bg-gray-100 text-gray-600"><i class="fa-solid fa-clipboard-list"></i></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="glass-card md:col-span-2">
+                <h3 class="text-md font-semibold text-gray-700 mb-4">สถิติการรับเข้าและเบิกจ่ายรายเดือน</h3>
+                <div class="relative h-[300px] w-full">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </div>
+            <div class="glass-card">
+                <h3 class="text-md font-semibold text-gray-700 mb-4">สัดส่วนบรรจุภัณฑ์แยกตามประเภท</h3>
+                <div class="relative h-[300px] w-full flex justify-center">
+                    <canvas id="typeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+         <div class="glass-card">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold flex items-center text-blue-800">
+                    <i class="fa-solid fa-filter mr-2"></i> แผงควบคุมตัวกรองอัจฉริยะ (Interactive Master Filters)
+                </h2>
+                <button class="text-blue-600 text-sm hover:underline font-medium" onclick="resetFilters()"><i class="fa-solid fa-eraser mr-1"></i> ล้างตัวกรองทั้งหมด</button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <!-- Row 1 -->
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>รหัสสินค้า (Product Code)</span> <span>ทั้งหมด</span></label>
+                    <select id="filter-code" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                        <option value="">เลือก รหัส...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ชื่อสินค้า (Product Name)</span> <span>ทั้งหมด</span></label>
+                    <select id="filter-name" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                        <option value="">เลือก ชื่อ...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ผู้จัดจำหน่าย (Supplier)</span> <span>ทั้งหมด</span></label>
+                    <select id="filter-sup" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                        <option value="">เลือก ซัพพลายเออร์...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>เลขที่ล็อต/แบทช์ (Batch No.)</span> <span>ทั้งหมด</span></label>
+                    <select id="filter-batch" onchange="filterTable()" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                        <option value="">เลือก ล็อต...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!-- Row 2 -->
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ปลายทางเบิกจ่าย (Delivered to)</span> <span>ทั้งหมด</span></label>
+                    <select class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                        <option value="">เลือก ปลายทาง...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">ช่วงวันที่บันทึกธุรกรรม (Record Date)</label>
+                    <div class="flex items-center space-x-2">
+                        <input type="date" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                        <span class="text-gray-400">-</span>
+                        <input type="date" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">ช่วงวันส่งมอบบรรจุภัณฑ์ (Delivered Date)</label>
+                    <div class="flex items-center space-x-2">
+                        <input type="date" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                        <span class="text-gray-400">-</span>
+                        <input type="date" class="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1 flex justify-between"><span>ปริมาณจ่ายออกสูงสุด (Max Qty Out)</span> <span class="font-bold text-blue-700">111 Drums</span></label>
+                    <input type="range" min="0" max="200" value="111" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card p-0 overflow-hidden">
+            <div class="p-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-white">
+                <div>
+                    <h2 class="text-lg font-semibold flex items-center text-blue-800">
+                        <i class="fa-solid fa-table-list mr-2"></i> ตารางบันทึกการเคลื่อนไหวบรรจุภัณฑ์
+                    </h2>
+                </div>
+                <div class="flex items-center space-x-3 w-full md:w-auto">
+                    <div class="relative w-full md:w-64">
+                        <i class="fa-solid fa-search absolute left-3 top-2.5 text-gray-400 text-sm"></i>
+                        <input type="text" id="search-input" onkeyup="filterTable()" placeholder="ค้นหาข้อความใดๆ..." class="w-full border border-gray-300 rounded-full pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr>
+                            <th class="w-12 text-center">#</th>
+                            <th>รหัสบรรจุภัณฑ์</th>
+                            <th>ประเภท/ชื่อ</th>
+                            <th>ผู้จัดจำหน่าย</th>
+                            <th>ล็อตแบทช์</th>
+                            <th>วันผลิต</th>
+                            <th class="text-blue-400">รับเข้า (IN)</th>
+                            <th>วันที่บันทึก</th>
+                            <th class="text-orange-400">จ่ายออก (OUT)</th>
+                            <th>ปลายทางบรรจุ</th>
+                            <th>วันจัดส่ง</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <tr><td colspan="11" class="text-center py-8 text-gray-400">กำลังโหลดข้อมูลตาราง...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ปุ่มเปลี่ยนหน้า (Pagination) -->
+            <div class="p-4 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center bg-white gap-4">
+                <div class="text-sm text-gray-500">
+                    แสดงหน้า <span id="current-page-text" class="font-bold text-gray-800">1</span> จาก <span id="total-pages-text" class="font-bold text-gray-800">1</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="btn-prev" onclick="prevPage()" class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-chevron-left mr-1"></i> ก่อนหน้า
+                    </button>
+                    <button id="btn-next" onclick="nextPage()" class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                        ถัดไป <i class="fa-solid fa-chevron-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500 bg-gray-50">
+                <div id="table-info">กำลังประมวลผลรายการ...</div>
+            </div>
+        </div>
+
+    </div>
+
+   <script>
+        let myMonthlyChart, myTypeChart;
+        let globalTableData = []; 
+        let filteredTableData = []; // เก็บข้อมูลที่ผ่านการกรองแล้ว
+
+        // ตัวแปรสำหรับการแบ่งหน้า (Pagination)
+        let currentPage = 1;
+        const rowsPerPage = 15; 
+        
+        document.addEventListener("DOMContentLoaded", loadAllData);
+
+        function loadAllData() {
+            setLoadingStatus(true);
+            
+            google.script.run.withSuccessHandler(function(data) {
+                document.getElementById('kpi-in').innerText = data.totalIn || 0;
+                document.getElementById('kpi-out').innerText = data.totalOut || 0;
+                document.getElementById('kpi-bal').innerText = data.balance || 0;
+                document.getElementById('kpi-mt').innerText = (data.mtRate || 0) + '%';
+                document.getElementById('kpi-batch').innerText = data.batchCount || 0;
+            }).getKPIData();
+
+            google.script.run.withSuccessHandler(renderCharts).getChartData();
+            google.script.run.withSuccessHandler(populateFilters).getFilterOptions();
+
+            google.script.run.withSuccessHandler(function(data) {
+                globalTableData = data; 
+                filteredTableData = [...data]; // สำเนาข้อมูลทั้งหมดไว้ตอนเริ่มแรก
+                currentPage = 1; // รีเซ็ตหน้ากลับไปที่ 1 เมื่อโหลดข้อมูลใหม่
+                renderTable(filteredTableData);
+                setLoadingStatus(false);
+            }).getTableData();
+        }
+
+        function setLoadingStatus(isLoading) {
+            const statusEl = document.getElementById('status-indicator');
+            if(isLoading) {
+                statusEl.innerHTML = '<div class="loader w-3 h-3 border-2 border-t-blue-400 mr-2"></div> กำลังดึงข้อมูล...';
+                statusEl.className = 'bg-blue-600/20 text-blue-300 border border-blue-500/30 px-3 py-1 rounded-full text-sm flex items-center';
+            } else {
+                statusEl.innerHTML = '<div class="w-2 h-2 bg-green-400 rounded-full mr-2"></div> เชื่อมต่อข้อมูลจริงแล้ว';
+                statusEl.className = 'bg-green-600/20 text-green-600 border border-green-500/30 px-3 py-1 rounded-full text-sm flex items-center';
+            }
+        }
+
+        function uploadData() {
+            const csvText = document.getElementById('csv-input').value;
+            const isAppend = document.getElementById('append-checkbox').checked;
+            
+            if(!csvText.trim()) {
+                alert("กรุณาวางข้อมูล CSV ก่อนกดอัปเดต"); return;
+            }
+            
+            const btn = document.getElementById('upload-btn');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> กำลังอัปเดต...';
+            btn.disabled = true;
+
+            google.script.run.withSuccessHandler(function(res) {
+                alert(res.message);
+                document.getElementById('csv-input').value = '';
+                btn.innerHTML = '<i class="fa-solid fa-bolt mr-2"></i> ประมวลผลและอัปเดต';
+                btn.disabled = false;
+                if(res.status === 'success') loadAllData();
+            }).processCsvUpload(csvText, isAppend);
+        }
+
+        // --- ส่วน Pagination ---
+        function renderTable(dataArray) {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            
+            if(dataArray.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-red-400">ไม่พบข้อมูลในระบบ</td></tr>';
+                document.getElementById('table-info').innerText = "แสดง 0 รายการ";
+                updatePaginationControls(0);
+                return;
+            }
+
+            // คำนวณช่วงข้อมูลที่จะแสดงในหน้านั้นๆ (หน้าละ 15 แถว)
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = startIndex + rowsPerPage;
+            const paginatedData = dataArray.slice(startIndex, endIndex);
+
+            paginatedData.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                const rowNum = startIndex + index + 1; // ลำดับที่แถวต่อเนื่องข้ามหน้า
+                tr.innerHTML = `
+                    <td class="text-center text-gray-400">${rowNum}</td>
+                    <td class="font-medium text-gray-800">${row['รหัสบรรจุภัณฑ์'] || '-'}</td>
+                    <td>${row['ประเภท/ชื่อ'] || '-'}</td>
+                    <td class="text-gray-500">${row['ผู้จัดจำหน่าย'] || '-'}</td>
+                    <td>${row['ล็อตแบทช์'] || '-'}</td>
+                    <td>${row['วันผลิต'] || '-'}</td>
+                    <td class="text-blue-600 font-semibold">${row['รับเข้า (IN)'] || ''}</td>
+                    <td>${row['วันที่บันทึก'] || '-'}</td>
+                    <td class="text-orange-500 font-semibold">${row['จ่ายออก (OUT)'] || ''}</td>
+                    <td>${row['ปลายทางบรรจุ'] || '-'}</td>
+                    <td>${row['วันจัดส่ง'] || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            const startDisplay = startIndex + 1;
+            const endDisplay = Math.min(endIndex, dataArray.length);
+            document.getElementById('table-info').innerText = `แสดงรายการที่ ${startDisplay} ถึง ${endDisplay} จากทั้งหมด ${dataArray.length} รายการ`;
+            
+            updatePaginationControls(dataArray.length);
+        }
+
+        function updatePaginationControls(totalItems) {
+            const totalPages = Math.ceil(totalItems / rowsPerPage) || 1;
+            
+            const currentEl = document.getElementById('current-page-text');
+            const totalEl = document.getElementById('total-pages-text');
+            if(currentEl) currentEl.innerText = currentPage;
+            if(totalEl) totalEl.innerText = totalPages;
+            
+            const btnPrev = document.getElementById('btn-prev');
+            const btnNext = document.getElementById('btn-next');
+            
+            if(btnPrev) btnPrev.disabled = (currentPage === 1 || totalItems === 0);
+            if(btnNext) btnNext.disabled = (currentPage === totalPages || totalItems === 0);
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable(filteredTableData);
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(filteredTableData.length / rowsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable(filteredTableData);
+            }
+        }
+
+        function populateFilters(opts) {
+            const createOptions = (arr, elId) => {
+                const select = document.getElementById(elId);
+                select.innerHTML = '<option value="">ทั้งหมด</option>';
+                arr.forEach(val => { select.innerHTML += `<option value="${val}">${val}</option>`; });
+            };
+            createOptions(opts.productCodes, 'filter-code');
+            createOptions(opts.productNames, 'filter-name');
+            createOptions(opts.suppliers, 'filter-sup');
+            createOptions(opts.batches, 'filter-batch');
+        }
+
+        function filterTable() {
+            const searchVal = document.getElementById('search-input').value.toLowerCase();
+            const fCode = document.getElementById('filter-code').value;
+            const fName = document.getElementById('filter-name').value;
+            const fSup = document.getElementById('filter-sup').value;
+            const fBatch = document.getElementById('filter-batch').value;
+
+            filteredTableData = globalTableData.filter(row => {
+                let match = true;
+                if(fCode && row['รหัสบรรจุภัณฑ์'] !== fCode) match = false;
+                if(fName && row['ประเภท/ชื่อ'] !== fName) match = false;
+                if(fSup && row['ผู้จัดจำหน่าย'] !== fSup) match = false;
+                if(fBatch && row['ล็อตแบทช์'] !== fBatch) match = false;
+                
+                if(searchVal) {
+                    const rowText = Object.values(row).join(" ").toLowerCase();
+                    if(!rowText.includes(searchVal)) match = false;
+                }
+                return match;
+            });
+            
+            currentPage = 1; 
+            renderTable(filteredTableData);
+        }
+
+        function resetFilters() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('filter-code').value = '';
+            document.getElementById('filter-name').value = '';
+            document.getElementById('filter-sup').value = '';
+            document.getElementById('filter-batch').value = '';
+            
+            filteredTableData = [...globalTableData];
+            currentPage = 1;
+            renderTable(filteredTableData);
+        }
+
+        function renderCharts(chartData) {
+            if(myMonthlyChart) myMonthlyChart.destroy();
+            if(myTypeChart) myTypeChart.destroy();
+
+            const ctxMonthly = document.getElementById('monthlyChart').getContext('2d');
+            myMonthlyChart = new Chart(ctxMonthly, {
+                type: 'bar',
+                data: {
+                    labels: chartData.monthly.labels,
+                    datasets: [
+                        { label: 'รับเข้า (IN)', data: chartData.monthly.inData, backgroundColor: '#3b82f6', borderRadius: 4 },
+                        { label: 'จ่ายออก (OUT)', data: chartData.monthly.outData, backgroundColor: '#f97316', borderRadius: 4 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
+            });
+
+            const ctxType = document.getElementById('typeChart').getContext('2d');
+            myTypeChart = new Chart(ctxType, {
+                type: 'doughnut',
+                data: {
+                    labels: chartData.type.labels,
+                    datasets: [{
+                        data: chartData.type.data,
+                        backgroundColor: ['#1e3a8a', '#3b82f6', '#14b8a6', '#f59e0b', '#8b5cf6', '#ec4899'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '70%' }
+            });
+        }
+    </script>
+</body>
+</html>

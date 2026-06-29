@@ -1,28 +1,14 @@
+// function getTableData() {
+//   // ดึงข้อมูลที่จัดระเบียบแล้วมาแสดง และจัดเรียงจากใหม่สุดไปเก่าสุด
+//   const data = getCleanDataAllSheets();
+//   return data.reverse(); 
+// }
+
 function getTableData() {
-  const data = getSheetData();
-  if (data.length <= 1) return [];
+  // ดึงข้อมูลที่จัดระเบียบแล้วจากทุกชีต
+  const data = getCleanDataAllSheets();
   
-  const headers = data[0];
-  let tableRows = [];
-  
-  // ข้ามบรรทัดที่ 0 (Header)
-  for (let i = 1; i < data.length; i++) {
-    let row = data[i];
-    let rowObj = {};
-    
-    headers.forEach((header, index) => {
-      let val = row[index];
-      // ตรวจสอบข้อมูลวันที่เพื่อฟอร์แมตให้สวยงามก่อนส่งไป HTML
-      if (val instanceof Date) {
-        rowObj[header] = Utilities.formatDate(val, "GMT+07:00", "dd-MMM-yyyy");
-      } else {
-        rowObj[header] = val !== undefined && val !== null ? val.toString() : "";
-      }
-    });
-    
-    tableRows.push(rowObj);
-  }
-  
-  // คุณสามารถใช้ .reverse() ตรงนี้ได้หากต้องการให้ข้อมูลใหม่สุดขึ้นก่อน
-  return tableRows;
+  // ส่งข้อมูลกลับไปแสดงผลตรงๆ โดยไม่ต้องใช้ .reverse() แล้ว
+  // ข้อมูลจะเรียงจาก ชีต 1 -> ชีตสุดท้าย และ บน -> ล่าง ตามลำดับจริง
+  return data; 
 }
